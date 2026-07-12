@@ -450,6 +450,33 @@ select {
   width: 100%;
 }
 
+.quick-start {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 14px;
+  padding: 20px 22px;
+  border: 1px solid #d8cfc2;
+  border-radius: 15px;
+  background: rgba(255,253,249,.86);
+}
+.quick-start-copy { display: flex; align-items: center; gap: 15px; }
+.quick-start-icon { display: grid; width: 43px; height: 43px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: #e6ddd2; color: var(--brown-dark); }
+.quick-start h2 { margin: 0; font-family: var(--serif); font-size: 1.35rem; font-weight: 520; }
+.quick-start p:last-child { margin: 5px 0 0; color: var(--muted); font-size: .67rem; }
+.quick-start-action { display: flex; align-items: center; gap: 15px; }
+.quick-progress { display: flex; gap: 5px; }
+.quick-progress span { width: 18px; height: 5px; border-radius: 99px; background: #ddd6cc; }
+.quick-progress span.is-done { background: var(--brown); }
+.emergency-look { display: flex; width: 100%; min-height: 68px; align-items: center; gap: 13px; margin: 0 0 18px; padding: 10px 17px; border: 0; border-radius: 15px; background: #714c3e; color: white; text-align: left; }
+.emergency-look > span:first-child { display: grid; width: 37px; height: 37px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: rgba(255,255,255,.14); }
+.emergency-look > span:nth-child(2) { display: flex; flex: 1; flex-direction: column; gap: 3px; }
+.emergency-look strong { font-family: var(--serif); font-size: 1rem; font-weight: 520; }
+.emergency-look small { color: #eadfd8; font-size: .62rem; }
+.context-pills { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 14px; }
+.context-pills span { padding: 6px 9px; border: 1px solid var(--line); border-radius: 99px; background: rgba(255,253,249,.65); color: var(--muted-dark); font-size: .56rem; font-weight: 600; }
+
 .rotation-panel {
   position: relative;
   display: grid;
@@ -1402,6 +1429,9 @@ select {
   white-space: nowrap;
 }
 
+.share-button { display: inline-flex; min-height: 39px; align-items: center; justify-content: center; gap: 7px; margin-top: 8px; border: 1px solid var(--line-dark); border-radius: 9px; background: transparent; color: var(--brown-dark); font-size: .65rem; font-weight: 650; }
+.share-button:hover { background: #f0ebe3; }
+
 .worn-button {
   display: inline-flex;
   width: max-content;
@@ -1984,6 +2014,12 @@ select {
   .page-heading h1 { font-size: 2.55rem; }
   .heading-script { font-size: 1.45rem; }
   .page-heading-actions { display: none; }
+  .quick-start { display: block; padding: 17px; }
+  .quick-start-copy { align-items: flex-start; }
+  .quick-start h2 { font-size: 1.18rem; }
+  .quick-start-action { justify-content: space-between; margin-top: 16px; }
+  .quick-start-action .primary-button { min-height: 42px; padding: 0 12px; font-size: .67rem; }
+  .emergency-look { min-height: 72px; margin-bottom: 18px; }
   .rotation-panel { display: block; min-height: 345px; }
   .rotation-copy { padding: 25px 22px; }
   .rotation-copy h2 { font-size: 1.75rem; }

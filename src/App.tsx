@@ -16,12 +16,14 @@ import {
   Plus,
   RefreshCw,
   Search,
+  Share2,
   Shirt,
   SlidersHorizontal,
   Sparkles,
   Trash2,
   Upload,
   WandSparkles,
+  Zap,
   type LucideIcon,
 } from 'lucide-react'
 import {
@@ -460,6 +462,26 @@ function App() {
     window.setTimeout(() => setToast(''), 3200)
   }
 
+  const startEmergencyLook = () => {
+    setOccasion('quotidien')
+    wardrobeStore.setOccasion('quotidien')
+    setNote('Je veux une tenue simple, flatteuse et facile à porter aujourd’hui.')
+    setView('generate')
+  }
+
+  const shareOutfit = async (suggestion: OutfitSuggestion, items: ClothingItem[]) => {
+    const text = `${suggestion.name} — ${items.map((item) => item.name).join(', ')}. Créée avec Le Dressing.`
+    try {
+      if (navigator.share) await navigator.share({ title: suggestion.name, text, url: window.location.href })
+      else {
+        await navigator.clipboard.writeText(`${text} ${window.location.href}`)
+        showToast('Tenue copiée, prête à partager.')
+      }
+    } catch (error) {
+      if ((error as DOMException).name !== 'AbortError') showToast('Partage indisponible pour le moment.')
+    }
+  }
+
   const installApplication = async () => {
     if (installPrompt.current) {
       await installPrompt.current.prompt()
@@ -785,6 +807,31 @@ function App() {
               </div>
             </header>
 
+            {state.items.length < 5 && (
+              <section className="quick-start" aria-label="Démarrage rapide">
+                <div className="quick-start-copy">
+                  <span className="quick-start-icon"><Camera size={19} /></span>
+                  <div>
+                    <p className="eyebrow">Démarrage express · moins d’une minute</p>
+                    <h2>Ajoutez vos 5 premières pièces</h2>
+                    <p>Une photo suffit : la catégorie et les détails sont préparés automatiquement.</p>
+                  </div>
+                </div>
+                <div className="quick-start-action">
+                  <div className="quick-progress" aria-label={`${state.items.length} vêtements sur 5`}>
+                    {Array.from({ length: 5 }, (_, index) => <span className={index < state.items.length ? 'is-done' : ''} key={index} />)}
+                  </div>
+                  <button className="primary-button" onClick={() => setAddOpen(true)}><Plus size={17} /> Ajouter la pièce {state.items.length + 1}</button>
+                </div>
+              </section>
+            )}
+
+            <button className="emergency-look" onClick={startEmergencyLook}>
+              <span><Zap size={20} /></span>
+              <span><strong>J’ai rien à me mettre</strong><small>Une tenue simple, maintenant, sans réfléchir.</small></span>
+              <ChevronRight size={19} />
+            </button>
+
             <section className="rotation-panel" aria-labelledby="rotation-title">
               <div className="rotation-copy">
                 <span className="rotation-kicker"><Sparkles size={15} /> Rotation du dressing</span>
@@ -886,6 +933,9 @@ function App() {
                 <p className="eyebrow">Votre styliste personnel</p>
                 <h1>Créer une tenue</h1>
                 <p className="page-subtitle">Trois propositions pensées uniquement avec les pièces de votre dressing.</p>
+                <div className="context-pills" aria-label="Contexte des suggestions">
+                  <span>Saison actuelle</span><span>Occasion</span><span>Rotation intelligente</span>
+                </div>
               </div>
               <span className="ai-badge"><Sparkles size={15} /> Assisté par IA</span>
             </header>
@@ -994,6 +1044,9 @@ function App() {
                                 disabled={worn}
                               >
                                 <Check size={17} /> {worn ? 'Portée aujourd’hui' : 'Porter aujourd’hui'}
+                              </button>
+                              <button className="share-button" onClick={() => shareOutfit(suggestion, items)}>
+                                <Share2 size={16} /> Partager la tenue
                               </button>
                             </div>
                           </article>
