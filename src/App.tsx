@@ -55,6 +55,7 @@ import {
 import { useWardrobeStore } from './lib/use-wardrobe-store'
 import { wardrobeStore } from './lib/wardrobe-store'
 import { wardrobeApi } from './lib/wardrobe-api'
+import { createProductPhoto } from './lib/product-photo'
 import {
   isSupabaseConfigured,
   loadRemoteWardrobe,
@@ -514,7 +515,12 @@ function App() {
     setPhotoBusy(true)
     setAddError('')
     try {
-      setPhotoData(await compressPhoto(file))
+      try {
+        setPhotoData(await createProductPhoto(file))
+      } catch {
+        setPhotoData(await compressPhoto(file))
+        showToast('Détourage indisponible : photo optimisée sans suppression du fond.')
+      }
     } catch (error) {
       setAddError(error instanceof Error ? error.message : 'Impossible de lire cette photo.')
     } finally {
@@ -1116,7 +1122,7 @@ function App() {
         ) : (
           <div className="photo-picker">
             <div className="photo-picker-icon"><ImagePlus size={26} /></div>
-            <strong>{photoBusy ? 'Préparation de la photo…' : 'Ajoutez la photo de votre pièce'}</strong>
+            <strong>{photoBusy ? 'Détourage et mise en valeur…' : 'Ajoutez la photo de votre pièce'}</strong>
             <p>JPG, PNG ou HEIC · compressée à 800 px</p>
             <div>
               <button className="primary-button" onClick={() => cameraInput.current?.click()} disabled={photoBusy}><Camera size={17} /> Prendre une photo</button>
