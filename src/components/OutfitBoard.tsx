@@ -23,15 +23,27 @@ export function OutfitBoard({ items, lookNumber, variant = 'outfit' }: OutfitBoa
       <span className="outfit-board-kicker">{variant === 'garment' ? 'Aperçu mannequin' : `Look 0${lookNumber}`}</span>
       <div className="outfit-board-model" aria-hidden="true">
         <svg viewBox="0 0 180 430" focusable="false">
-          <path className="mannequin-hair" d="M54 55C54 20 77 5 100 10c23 5 31 27 26 53-6-10-12-17-23-22-14 12-30 17-49 14Z" />
-          <circle className="mannequin-skin" cx="91" cy="54" r="26" />
-          <path className="mannequin-skin" d="M79 76h24l3 27H76l3-27Z" />
-          <path className="mannequin-body" d="M61 101c15-10 45-10 60 0l15 87-29 16H75l-29-16 15-87Z" />
-          <path className="mannequin-skin" d="M52 105 31 205l13 5 31-94-23-11ZM127 105l22 100-13 5-32-94 23-11Z" />
-          <path className="mannequin-skin" d="M76 194h31l5 207-16 1-6-162-7 162-17-1 10-207Z" />
-          <ellipse className="mannequin-shoe" cx="73" cy="407" rx="19" ry="8" />
-          <ellipse className="mannequin-shoe" cx="105" cy="407" rx="19" ry="8" />
-          <path className="mannequin-detail" d="M83 45c5 3 12 3 17 0M87 62c3 2 6 2 9 0" />
+          <defs>
+            <linearGradient id={`shop-shell-${variant}`} x1="0" x2="1" y1="0" y2="1">
+              <stop offset="0" stopColor="#fffdf7" />
+              <stop offset="0.52" stopColor="#e7e1d7" />
+              <stop offset="1" stopColor="#c7beb0" />
+            </linearGradient>
+            <radialGradient id={`shop-head-${variant}`} cx="35%" cy="26%" r="78%">
+              <stop offset="0" stopColor="#fffef9" />
+              <stop offset="1" stopColor="#d2cabd" />
+            </radialGradient>
+          </defs>
+          <ellipse className="mannequin-shadow" cx="91" cy="414" rx="57" ry="10" />
+          <path className="mannequin-stand" d="M87 369h8v38h35v8H52v-8h35v-38Z" />
+          <ellipse className="mannequin-head" cx="90" cy="45" rx="23" ry="31" fill={`url(#shop-head-${variant})`} />
+          <path className="mannequin-neck" d="M78 70c5 6 19 6 24 0l4 31H74l4-31Z" fill={`url(#shop-shell-${variant})`} />
+          <path className="mannequin-torso" d="M58 101c8-8 19-12 32-12s25 4 33 12l12 78c2 18-8 31-22 37l-8 5H75l-8-5c-14-6-24-19-22-37l13-78Z" fill={`url(#shop-shell-${variant})`} />
+          <path className="mannequin-limb" d="M58 101c-10 5-15 13-17 27L27 225c-1 9 2 14 8 15 7 1 11-4 13-13l25-108-15-18Z" fill={`url(#shop-shell-${variant})`} />
+          <path className="mannequin-limb" d="M123 101c10 5 15 14 17 27l13 78c2 10 7 25 11 36 3 8 0 14-6 16-7 2-12-2-15-10l-17-40-18-89 15-18Z" fill={`url(#shop-shell-${variant})`} />
+          <path className="mannequin-limb" d="M74 208h31l-2 86 18 100c2 10-3 16-11 17-8 1-13-4-14-13L89 300l-7 99c-1 9-6 14-14 13-8-1-12-7-10-17l18-101-2-86Z" fill={`url(#shop-shell-${variant})`} />
+          <path className="mannequin-joint" d="M47 205c5 3 9 4 14 1M126 205c5 1 9 0 13-3M75 217c10 4 21 4 31 0M89 91v122" />
+          <path className="mannequin-face" d="M84 43h2m9 0h2M87 58c2 1 4 1 6 0" />
         </svg>
 
         {bodyItems.map((item) => (
