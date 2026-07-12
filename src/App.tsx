@@ -34,8 +34,16 @@ import {
 } from 'react'
 import { BrandMark } from './components/BrandMark'
 import { ClothingPhoto } from './components/ClothingPhoto'
+import { OutfitBoard } from './components/OutfitBoard'
 import { Sheet } from './components/Sheet'
 import { daysSince, formatLastWorn } from './lib/dates'
+import {
+  createLocalAccount,
+  getLocalSession,
+  LocalAuthError,
+  signInLocalAccount,
+  signOutLocalAccount,
+} from './lib/local-auth'
 import {
   CATEGORY_LABELS,
   CATEGORY_LABELS_SINGULAR,
@@ -149,9 +157,10 @@ function rediscoveryHeadline(count: number) {
 interface LoginScreenProps {
   onLogin: (email: string, password: string, createAccount: boolean) => Promise<string | null>
   onGoogle: () => Promise<string | null>
+  onResetPassword: (email: string) => Promise<string>
 }
 
-function LoginScreen({ onLogin, onGoogle }: LoginScreenProps) {
+function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenProps) {
   const [createAccount, setCreateAccount] = useState(false)
   const [busy, setBusy] = useState(false)
   const [email, setEmail] = useState('')
@@ -173,6 +182,10 @@ function LoginScreen({ onLogin, onGoogle }: LoginScreenProps) {
     const error = await onGoogle()
     if (error) setAuthError(error)
     setBusy(false)
+  }
+
+  const resetPassword = async () => {
+    setAuthError(await onResetPassword(email))
   }
 
   return (
@@ -229,7 +242,7 @@ function LoginScreen({ onLogin, onGoogle }: LoginScreenProps) {
             <input className="text-field" id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="vous@exemple.fr" required />
             <div className="password-label-row">
               <label className="field-label" htmlFor="password">Mot de passe</label>
-              {!createAccount && <button type="button" className="text-link">Mot de passe oublié ?</button>}
+              {!createAccount && <button type="button" className="text-link" onClick={resetPassword}>Mot de passe oublié ?</button>}
             </div>
             <input className="text-field" id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8 caractères minimum" minLength={8} required />
             <button className="primary-button auth-submit" type="submit" disabled={busy} aria-busy={busy}>
@@ -238,15 +251,19 @@ function LoginScreen({ onLogin, onGoogle }: LoginScreenProps) {
             </button>
           </form>
           {authError && <p className="form-error auth-error" role="alert">{authError}</p>}
-          <div className="auth-divider"><span>ou</span></div>
-          <button className="secondary-button google-button" type="button" onClick={continueWithGoogle} disabled={busy}>
-            <span aria-hidden="true" className="google-g">G</span>
-            Continuer avec Google
-          </button>
+          {isSupabaseConfigured && (
+            <>
+              <div className="auth-divider"><span>ou</span></div>
+              <button className="secondary-button google-button" type="button" onClick={continueWithGoogle} disabled={busy}>
+                <span aria-hidden="true" className="google-g">G</span>
+                Continuer avec Google
+              </button>
+            </>
+          )}
           <p className="demo-note">
             {isSupabaseConfigured
               ? 'Connexion sécurisée par Supabase. Vos photos restent dans un espace privé.'
-              : 'Prototype : les données restent sur cet appareil tant que Supabase n’est pas configuré.'}
+              : 'Compte protégé sur cet appareil. Chaque compte conserve son propre dressing et sa session.'}
           </p>
         </div>
       </section>
@@ -277,10 +294,11 @@ function ClothingCard({ item, onOpen }: { item: ClothingItem; onOpen: () => void
 
 function App() {
   const state = useWardrobeStore()
-  const [authenticated, setAuthenticated] = useState(() => !isSupabaseConfigured && localStorage.getItem('le-dressing:logged-out') !== 'true')
+  const initialLocalSession = getLocalSession()
+  const [authenticated, setAuthenticated] = useState(() => !isSupabaseConfigured && Boolean(initialLocalSession))
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured)
-  const [currentUserId, setCurrentUserId] = useState<string | null>(null)
-  const [currentEmail, setCurrentEmail] = useState<string | null>(null)
+  const [currentUserId, setCurrentUserId] = useState<string | null>(() => initialLocalSession?.userId ?? null)
+  const [currentEmail, setCurrentEmail] = useState<string | null>(() => initialLocalSession?.email ?? null)
   const [view, setView] = useState<AppView>('wardrobe')
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [sortMode, setSortMode] = useState<SortMode>('rotation')
@@ -602,18 +620,32 @@ function App() {
 
   const signOut = async () => {
     if (supabase) await supabase.auth.signOut()
-    localStorage.setItem('le-dressing:logged-out', 'true')
+    else {
+      signOutLocalAccount()
+      wardrobeStore.switchToGuest()
+    }
     setCurrentUserId(null)
+    setCurrentEmail(null)
     setAccountOpen(false)
     setAuthenticated(false)
   }
 
   const signIn = async (email: string, password: string, createAccount: boolean) => {
     if (!supabase) {
-      await new Promise((resolve) => window.setTimeout(resolve, 450))
-      localStorage.removeItem('le-dressing:logged-out')
-      setAuthenticated(true)
-      return null
+      try {
+        const session = createAccount
+          ? await createLocalAccount(email, password)
+          : await signInLocalAccount(email, password)
+        wardrobeStore.switchToAccount(session.userId, createAccount)
+        setCurrentUserId(session.userId)
+        setCurrentEmail(session.email)
+        setAuthenticated(true)
+        return null
+      } catch (error) {
+        return error instanceof LocalAuthError
+          ? error.message
+          : 'Impossible d’ouvrir ce compte sur cet appareil.'
+      }
     }
     const result = createAccount
       ? await supabase.auth.signUp({ email, password })
@@ -627,15 +659,26 @@ function App() {
 
   const signInWithGoogle = async () => {
     if (!supabase) {
-      localStorage.removeItem('le-dressing:logged-out')
-      setAuthenticated(true)
-      return null
+      return 'La connexion Google sera disponible après activation de la synchronisation cloud.'
     }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: window.location.origin },
     })
     return error ? 'La connexion Google n’a pas pu démarrer.' : null
+  }
+
+  const resetPassword = async (email: string) => {
+    if (!email.trim()) return 'Saisissez d’abord votre adresse e-mail.'
+    if (!supabase) {
+      return 'Sur cet appareil, créez un nouveau compte si le mot de passe est perdu. La réinitialisation par e-mail nécessite la synchronisation cloud.'
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin,
+    })
+    return error
+      ? 'Impossible d’envoyer l’e-mail de réinitialisation.'
+      : 'Un lien de réinitialisation vient de vous être envoyé.'
   }
 
   if (authLoading) {
@@ -648,7 +691,9 @@ function App() {
     )
   }
 
-  if (!authenticated) return <LoginScreen onLogin={signIn} onGoogle={signInWithGoogle} />
+  if (!authenticated) {
+    return <LoginScreen onLogin={signIn} onGoogle={signInWithGoogle} onResetPassword={resetPassword} />
+  }
 
   return (
     <div className="app-shell">
@@ -679,7 +724,7 @@ function App() {
         </div>
         <button className="user-row" onClick={() => setAccountOpen(true)}>
           <span className="user-avatar">{displayInitials}</span>
-          <span><strong>{displayName}</strong><small>{supabase ? 'Compte synchronisé' : 'Mode démonstration'}</small></span>
+          <span><strong>{displayName}</strong><small>{supabase ? 'Compte synchronisé' : 'Compte local privé'}</small></span>
           <ChevronRight size={17} />
         </button>
       </aside>
@@ -687,7 +732,6 @@ function App() {
       <main className="app-main">
         <header className="mobile-header">
           <BrandMark />
-          <button className="avatar-button" onClick={() => setAccountOpen(true)} aria-label="Ouvrir le compte">{displayInitials}</button>
         </header>
 
         {view === 'wardrobe' ? (
@@ -903,9 +947,7 @@ function App() {
                         return (
                           <article className="outfit-card" key={suggestion.id}>
                             <div className="outfit-number">0{index + 1}</div>
-                            <div className="outfit-photos">
-                              {items.map((item) => <ClothingPhoto item={item} key={item.id} />)}
-                            </div>
+                            <OutfitBoard items={items} lookNumber={index + 1} />
                             <div className="outfit-card-body">
                               <div className="outfit-title-row">
                                 <div>
@@ -966,6 +1008,9 @@ function App() {
         </button>
         <button className={view === 'generate' ? 'is-active' : ''} onClick={() => setView('generate')}>
           <WandSparkles size={20} /><span>Générer</span>
+        </button>
+        <button className={accountOpen ? 'is-active' : ''} onClick={() => setAccountOpen(true)} aria-label="Ouvrir le profil">
+          <CircleUserRound size={20} /><span>Profil</span>
         </button>
       </nav>
 
@@ -1106,7 +1151,7 @@ function App() {
       <Sheet open={accountOpen} onClose={() => setAccountOpen(false)} eyebrow="Votre compte" title={`Bonjour ${displayName}`}>
         <div className="account-card">
           <span className="account-avatar"><CircleUserRound size={29} /></span>
-          <div><strong>{currentEmail ?? 'elise@exemple.fr'}</strong><small>{supabase ? 'Synchronisé avec Supabase' : 'Mode démonstration local'}</small></div>
+          <div><strong>{currentEmail ?? 'Compte local'}</strong><small>{supabase ? 'Synchronisé avec Supabase' : 'Dressing privé sur cet appareil'}</small></div>
         </div>
         <div className="account-stats">
           <span><strong>{state.items.length}</strong> pièces</span>

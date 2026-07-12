@@ -6,7 +6,11 @@ import type {
   OutfitSuggestion,
   WardrobeState,
 } from "../types";
-import type { WardrobePersistence } from "./storage";
+import {
+  createWardrobePersistence,
+  wardrobeStorageKeyForAccount,
+  type WardrobePersistence,
+} from "./storage";
 import { WardrobeStore } from "./wardrobe-store";
 
 function cloneState(state: WardrobeState): WardrobeState {
@@ -103,6 +107,26 @@ describe("WardrobeStore CRUD", () => {
     const afterRemovalStore = new WardrobeStore(emptyState(), persistence);
     expect(afterRemovalStore.getSnapshot().items).toEqual([]);
     afterRemovalStore.dispose();
+  });
+
+  it("migrates the current wardrobe into a newly created account", () => {
+    const initial = emptyState();
+    initial.items = [item("top", "haut")];
+    const firstStore = new WardrobeStore(initial, createIsolatedMemoryPersistence());
+
+    firstStore.switchToAccount("new-account", true);
+    expect(firstStore.getSnapshot().items[0]).toMatchObject({
+      id: "top",
+      userId: "new-account",
+    });
+    firstStore.dispose();
+
+    const restoredStore = new WardrobeStore(
+      { ...emptyState(), userId: "new-account" },
+      createWardrobePersistence(wardrobeStorageKeyForAccount("new-account")),
+    );
+    expect(restoredStore.getSnapshot().items).toHaveLength(1);
+    restoredStore.dispose();
   });
 });
 

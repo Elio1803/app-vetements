@@ -12,6 +12,10 @@ import { asValidDate } from "./dates";
 
 export const WARDROBE_STORAGE_KEY = "le-dressing:wardrobe:v1";
 
+export function wardrobeStorageKeyForAccount(userId: string): string {
+  return `${WARDROBE_STORAGE_KEY}:account:${userId}`;
+}
+
 export interface WardrobePersistence {
   load(fallback: WardrobeState): WardrobeState;
   save(state: WardrobeState): void;
@@ -228,4 +232,3 @@ export function createWardrobePersistence(
     },
   };
 }
-
