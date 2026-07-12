@@ -1,0 +1,9 @@
+project_id = "le-dressing"
+
+[functions.analyze-clothing]
+# Authentication is verified in the handler with Auth.getUser(). Disabling the
+# legacy gateway verifier keeps asymmetric Supabase signing keys compatible.
+verify_jwt = false
+
+[functions.generate-outfits]
+verify_jwt = false
