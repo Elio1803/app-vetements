@@ -155,6 +155,15 @@ function rediscoveryHeadline(count: number) {
     : `${count} pièces n’attendent que vous.`
 }
 
+function formatToday(date: Date) {
+  const formatted = new Intl.DateTimeFormat('fr-FR', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+  }).format(date)
+  return `${formatted.charAt(0).toLocaleUpperCase('fr')}${formatted.slice(1)}`
+}
+
 interface LoginScreenProps {
   onLogin: (email: string, password: string, createAccount: boolean) => Promise<string | null>
   onGoogle: () => Promise<string | null>
@@ -321,6 +330,7 @@ function App() {
   const [generating, setGenerating] = useState(false)
   const [wearCandidate, setWearCandidate] = useState<OutfitSuggestion | null>(null)
   const [toast, setToast] = useState('')
+  const [today, setToday] = useState(() => new Date())
   const [canInstall, setCanInstall] = useState(false)
   const [isInstalled, setIsInstalled] = useState(() => {
     const standaloneNavigator = navigator as Navigator & { standalone?: boolean }
@@ -367,6 +377,21 @@ function App() {
     return () => {
       active = false
       subscription.subscription.unsubscribe()
+    }
+  }, [])
+
+  useEffect(() => {
+    const refreshDate = () => setToday((current) => {
+      const next = new Date()
+      return current.toDateString() === next.toDateString() ? current : next
+    })
+    const interval = window.setInterval(refreshDate, 60_000)
+    window.addEventListener('focus', refreshDate)
+    document.addEventListener('visibilitychange', refreshDate)
+    return () => {
+      window.clearInterval(interval)
+      window.removeEventListener('focus', refreshDate)
+      document.removeEventListener('visibilitychange', refreshDate)
     }
   }, [])
 
@@ -741,7 +766,7 @@ function App() {
           <div className="page-content wardrobe-page">
             <header className="page-heading wardrobe-heading">
               <div>
-                <p className="eyebrow">Samedi · Votre sélection</p>
+                <p className="eyebrow">{formatToday(today)} · Votre sélection</p>
                 <h1>Bonjour,</h1>
                 <p className="heading-script">que porte-t-on aujourd’hui ?</p>
               </div>
