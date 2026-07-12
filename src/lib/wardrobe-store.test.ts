@@ -109,24 +109,17 @@ describe("WardrobeStore CRUD", () => {
     afterRemovalStore.dispose();
   });
 
-  it("migrates the current wardrobe into a newly created account", () => {
+  it("removes bundled demo items while preserving user photos", () => {
     const initial = emptyState();
-    initial.items = [item("top", "haut")];
-    const firstStore = new WardrobeStore(initial, createIsolatedMemoryPersistence());
-
-    firstStore.switchToAccount("new-account", true);
-    expect(firstStore.getSnapshot().items[0]).toMatchObject({
-      id: "top",
-      userId: "new-account",
-    });
-    firstStore.dispose();
-
-    const restoredStore = new WardrobeStore(
-      { ...emptyState(), userId: "new-account" },
-      createWardrobePersistence(wardrobeStorageKeyForAccount("new-account")),
+    initial.items = [item("demo-pull-ecru", "haut"), item("user-photo", "robe")];
+    const persistence = createWardrobePersistence(
+      wardrobeStorageKeyForAccount("clean-account"),
     );
-    expect(restoredStore.getSnapshot().items).toHaveLength(1);
-    restoredStore.dispose();
+    persistence.save(initial);
+
+    const store = new WardrobeStore(initial, persistence);
+    expect(store.getSnapshot().items.map(({ id }) => id)).toEqual(["user-photo"]);
+    store.dispose();
   });
 });
 

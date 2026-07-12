@@ -8,7 +8,6 @@ import type {
   WardrobeState,
   WardrobeStats,
 } from "../types";
-import { createDemoWardrobeState } from "./demo-data";
 import { toIsoString } from "./dates";
 import { getLocalSession } from "./local-auth";
 import { generateLocalOutfits } from "./outfit-engine";
@@ -35,6 +34,24 @@ function createEmptyWardrobeState(userId: string): WardrobeState {
   };
 }
 
+function withoutBundledDemoItems(state: WardrobeState): WardrobeState {
+  const demoIds = new Set(
+    state.items.filter((item) => item.id.startsWith("demo-")).map((item) => item.id),
+  );
+  if (!demoIds.size) return state;
+  return {
+    ...state,
+    items: state.items.filter((item) => !demoIds.has(item.id)),
+    outfits: state.outfits.filter((outfit) =>
+      outfit.itemIds.every((itemId) => !demoIds.has(itemId))
+    ),
+    suggestions: state.suggestions.filter((suggestion) =>
+      suggestion.itemIds.every((itemId) => !demoIds.has(itemId))
+    ),
+    lastUpdatedAt: new Date().toISOString(),
+  };
+}
+
 export class WardrobeStore {
   private state: WardrobeState;
   private readonly listeners = new Set<WardrobeListener>();
@@ -42,11 +59,13 @@ export class WardrobeStore {
   private stopPersistenceSubscription: () => void;
 
   constructor(
-    initialState = createDemoWardrobeState(),
+    initialState = createEmptyWardrobeState("guest"),
     persistence = createWardrobePersistence(),
   ) {
     this.persistence = persistence;
-    this.state = persistence.load(initialState);
+    const loaded = persistence.load(initialState);
+    this.state = withoutBundledDemoItems(loaded);
+    if (this.state !== loaded) this.persistence.save(this.state);
     this.stopPersistenceSubscription = this.subscribeToPersistence();
   }
 
@@ -76,22 +95,12 @@ export class WardrobeStore {
     this.emit();
   }
 
-  switchToAccount(userId: string, migrateCurrentWardrobe = false): void {
-    const currentState = this.state;
+  switchToAccount(userId: string): void {
     this.stopPersistenceSubscription();
     this.persistence = createWardrobePersistence(wardrobeStorageKeyForAccount(userId));
-    if (migrateCurrentWardrobe) {
-      this.state = {
-        ...currentState,
-        userId,
-        items: currentState.items.map((item) => ({ ...item, userId })),
-        outfits: currentState.outfits.map((outfit) => ({ ...outfit, userId })),
-        lastUpdatedAt: new Date().toISOString(),
-      };
-      this.persistence.save(this.state);
-    } else {
-      this.state = this.persistence.load(createEmptyWardrobeState(userId));
-    }
+    const loaded = this.persistence.load(createEmptyWardrobeState(userId));
+    this.state = withoutBundledDemoItems(loaded);
+    if (this.state !== loaded) this.persistence.save(this.state);
     this.stopPersistenceSubscription = this.subscribeToPersistence();
     this.emit();
   }
@@ -99,7 +108,7 @@ export class WardrobeStore {
   switchToGuest(): void {
     this.stopPersistenceSubscription();
     this.persistence = createWardrobePersistence();
-    this.state = this.persistence.load(createDemoWardrobeState());
+    this.state = createEmptyWardrobeState("guest");
     this.stopPersistenceSubscription = this.subscribeToPersistence();
     this.emit();
   }
@@ -215,17 +224,6 @@ export class WardrobeStore {
 
   getStats(now = new Date()): WardrobeStats {
     return calculateWardrobeStats(this.state.items, this.state.outfits, now);
-  }
-
-  resetDemo(): void {
-    const demo = createDemoWardrobeState();
-    const userId = this.state.userId;
-    this.commit({
-      ...demo,
-      userId,
-      items: demo.items.map((item) => ({ ...item, userId })),
-      outfits: demo.outfits.map((outfit) => ({ ...outfit, userId })),
-    });
   }
 
   clear(): void {

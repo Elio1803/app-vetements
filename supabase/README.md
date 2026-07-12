@@ -1,8 +1,7 @@
 # Backend Supabase — Le Dressing
 
-Ce dossier contient la base Postgres, le bucket Storage privé et les deux
-fonctions Edge qui parlent à Anthropic. La clé Anthropic n'est jamais utilisée
-par le navigateur.
+Ce dossier contient la base Postgres, le bucket Storage privé et les fonctions
+Edge. La clé Anthropic n'est jamais utilisée par le navigateur.
 
 ## Contenu
 
@@ -14,6 +13,8 @@ par le navigateur.
 - `functions/generate-outfits` choisit au maximum 10 photos, envoie les autres
   pièces comme métadonnées, génère trois tenues et les enregistre dans
   `outfits` ; elle embarque aussi sa propre configuration Deno.
+- `functions/send-welcome-email` envoie une seule fois l'e-mail « Bonjour »
+  après la première connexion confirmée, via Resend.
 - `functions/_shared` centralise l'authentification, CORS, le contrôle des
   images, l'appel Anthropic, le nettoyage JSON et le retry unique.
 
@@ -85,6 +86,16 @@ En production, `ALLOWED_ORIGINS` doit contenir les origines frontend exactes,
 séparées par des virgules. Sans cette variable, seules les origines Vite
 locales et les requêtes serveur sans en-tête `Origin` sont acceptées.
 
+Pour l'e-mail de bienvenue, ajouter également les secrets suivants :
+
+```bash
+supabase secrets set RESEND_API_KEY=re_...
+supabase secrets set WELCOME_FROM_EMAIL="Le Dressing <bonjour@votre-domaine.fr>"
+```
+
+Le domaine de l'expéditeur doit être validé dans Resend. La fonction mémorise
+`welcome_email_sent_at` afin de ne pas renvoyer le message à chaque connexion.
+
 ## Déploiement
 
 ```bash
@@ -93,9 +104,10 @@ supabase db push
 supabase secrets set --env-file supabase/.env.production
 supabase functions deploy analyze-clothing
 supabase functions deploy generate-outfits
+supabase functions deploy send-welcome-email
 ```
 
-Les deux fonctions ont `verify_jwt = false` dans `config.toml` pour ne pas
+Les fonctions ont `verify_jwt = false` dans `config.toml` pour ne pas
 dépendre du vérificateur JWT historique, incompatible avec certaines clés de
 signature asymétriques. Ce réglage ne rend pas les endpoints publics : chaque
 handler exige un Bearer token et appelle `Auth.getUser()` avant tout accès aux

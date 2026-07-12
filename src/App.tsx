@@ -56,6 +56,7 @@ import { wardrobeApi } from './lib/wardrobe-api'
 import {
   isSupabaseConfigured,
   loadRemoteWardrobe,
+  sendWelcomeEmail,
   signedPhotoUrl,
   supabase,
   uploadClothingPhoto,
@@ -351,6 +352,7 @@ function App() {
         if (data.user && active) {
           const paths = await loadRemoteWardrobe(data.user)
           if (active) storagePaths.current = paths
+          void sendWelcomeEmail().catch(() => undefined)
         }
       }
       if (!userId && active) setCurrentEmail(null)
@@ -636,10 +638,11 @@ function App() {
         const session = createAccount
           ? await createLocalAccount(email, password)
           : await signInLocalAccount(email, password)
-        wardrobeStore.switchToAccount(session.userId, createAccount)
+        wardrobeStore.switchToAccount(session.userId)
         setCurrentUserId(session.userId)
         setCurrentEmail(session.email)
         setAuthenticated(true)
+        if (createAccount) showToast(`Bonjour ${session.email.split('@')[0]}, votre dressing est prêt.`)
         return null
       } catch (error) {
         return error instanceof LocalAuthError
@@ -1170,7 +1173,6 @@ function App() {
             </button>
           )}
         </div>
-        <button className="secondary-button full-button" onClick={() => wardrobeStore.resetDemo()}><RefreshCw size={17} /> Restaurer la démo</button>
         <button className="danger-button full-button" onClick={signOut}><LogOut size={17} /> Se déconnecter</button>
       </Sheet>
 

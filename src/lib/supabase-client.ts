@@ -77,3 +77,9 @@ export async function signedPhotoUrl(path: string) {
   if (error || !data?.signedUrl) throw error ?? new Error('URL photo indisponible.')
   return data.signedUrl
 }
+
+export async function sendWelcomeEmail(): Promise<void> {
+  if (!supabase) return
+  const { error } = await supabase.functions.invoke('send-welcome-email', { body: {} })
+  if (error) throw error
+}
