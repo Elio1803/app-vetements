@@ -4,30 +4,23 @@ import { ClothingPhoto } from './ClothingPhoto'
 interface OutfitBoardProps {
   items: ClothingItem[]
   lookNumber: number
+  variant?: 'outfit' | 'garment'
 }
 
-const BODY_CATEGORIES = new Set<ClothingItem['category']>([
-  'bas',
-  'haut',
-  'veste_manteau',
-  'robe',
-])
-
-export function OutfitBoard({ items, lookNumber }: OutfitBoardProps) {
+export function OutfitBoard({ items, lookNumber, variant = 'outfit' }: OutfitBoardProps) {
   const bodyItems = [...items]
-    .filter((item) => BODY_CATEGORIES.has(item.category))
     .sort((left, right) => {
-      const order: ClothingItem['category'][] = ['bas', 'haut', 'veste_manteau', 'robe']
+      const order: ClothingItem['category'][] = ['bas', 'haut', 'veste_manteau', 'robe', 'chaussures', 'accessoire']
       return order.indexOf(left.category) - order.indexOf(right.category)
     })
 
   return (
     <div
-      className="outfit-board"
+      className={`outfit-board outfit-board--${variant}`}
       role="img"
       aria-label={`Planche de la tenue ${lookNumber} : ${items.map((item) => item.name).join(', ')}`}
     >
-      <span className="outfit-board-kicker">Look 0{lookNumber}</span>
+      <span className="outfit-board-kicker">{variant === 'garment' ? 'Aperçu mannequin' : `Look 0${lookNumber}`}</span>
       <div className="outfit-board-model" aria-hidden="true">
         <svg viewBox="0 0 180 430" focusable="false">
           <path className="mannequin-hair" d="M54 55C54 20 77 5 100 10c23 5 31 27 26 53-6-10-12-17-23-22-14 12-30 17-49 14Z" />

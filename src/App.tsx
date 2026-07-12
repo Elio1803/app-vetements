@@ -288,7 +288,7 @@ function ClothingCard({ item, onOpen }: { item: ClothingItem; onOpen: () => void
   return (
     <button className="clothing-card" onClick={onOpen} aria-label={`${item.name ?? 'Pièce sans nom'}, ${status.label}`}>
       <div className="clothing-card-image">
-        <ClothingPhoto item={item} />
+        <OutfitBoard items={[item]} lookNumber={0} variant="garment" />
         <span className={`worn-badge worn-badge--${status.tone}`}>
           <Clock3 size={12} />
           <span className="worn-badge-full">{status.label}</span>
