@@ -49,9 +49,9 @@ function makeCutoutReadable(context: CanvasRenderingContext2D, width: number, he
 
 function focusBounds(category: ClothingCategory, width: number, height: number) {
   const presets: Record<ClothingCategory, { x: number; y: number; width: number; height: number }> = {
-    haut: { x: 0.14, y: 0.16, width: 0.72, height: 0.56 },
-    bas: { x: 0.14, y: 0.34, width: 0.72, height: 0.62 },
-    chaussures: { x: 0.08, y: 0.66, width: 0.84, height: 0.32 },
+    haut: { x: 0.12, y: 0.1, width: 0.76, height: 0.46 },
+    bas: { x: 0.12, y: 0.43, width: 0.76, height: 0.52 },
+    chaussures: { x: 0.08, y: 0.72, width: 0.84, height: 0.26 },
     veste_manteau: { x: 0.1, y: 0.1, width: 0.8, height: 0.78 },
     accessoire: { x: 0.16, y: 0.12, width: 0.68, height: 0.68 },
     robe: { x: 0.12, y: 0.12, width: 0.76, height: 0.82 },
@@ -72,12 +72,15 @@ export async function focusPhotoOnCategory(file: File, category: ClothingCategor
   const bitmap = await createImageBitmap(file)
   const bounds = focusBounds(category, bitmap.width, bitmap.height)
   const canvas = document.createElement('canvas')
-  canvas.width = bounds.width
-  canvas.height = bounds.height
+  const padding = Math.round(Math.min(bounds.width, bounds.height) * 0.08)
+  canvas.width = bounds.width + padding * 2
+  canvas.height = bounds.height + padding * 2
   const context = canvas.getContext('2d')
   if (!context) throw new Error('Recadrage indisponible sur cet appareil.')
 
-  context.drawImage(bitmap, bounds.x, bounds.y, bounds.width, bounds.height, 0, 0, bounds.width, bounds.height)
+  context.fillStyle = '#FFFFFF'
+  context.fillRect(0, 0, canvas.width, canvas.height)
+  context.drawImage(bitmap, bounds.x, bounds.y, bounds.width, bounds.height, padding, padding, bounds.width, bounds.height)
   bitmap.close()
 
   const blob = await new Promise<Blob>((resolve, reject) => {
