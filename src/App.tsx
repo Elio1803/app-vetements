@@ -136,6 +136,29 @@ function authRedirectUrl() {
   return new URL(baseUrl, window.location.origin).href
 }
 
+async function authErrorMessage(error: { message?: string } | null, email: string) {
+  const message = error?.message?.toLowerCase() ?? ''
+
+  if (message.includes('email not confirmed') || message.includes('not confirmed')) {
+    await supabase?.auth.resend({
+      type: 'signup',
+      email,
+      options: { emailRedirectTo: authRedirectUrl() },
+    }).catch(() => null)
+    return 'Votre e-mail n’est pas encore confirmé. Je viens de renvoyer un nouveau lien de confirmation.'
+  }
+
+  if (message.includes('invalid login credentials')) {
+    return 'Adresse e-mail ou mot de passe incorrect. Si le compte vient d’être créé, confirmez d’abord le lien reçu par e-mail.'
+  }
+
+  if (message.includes('user already registered') || message.includes('already registered')) {
+    return 'Ce compte existe déjà. Passez sur “Se connecter”, ou confirmez le dernier e-mail reçu.'
+  }
+
+  return 'Impossible de vous connecter pour le moment. Réessayez dans quelques instants.'
+}
+
 async function compressPhoto(file: File): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('Ce fichier n’est pas une image.')
   try {
@@ -729,7 +752,7 @@ function App() {
           options: { emailRedirectTo: authRedirectUrl() },
         })
       : await supabase.auth.signInWithPassword({ email, password })
-    if (result.error) return 'Impossible de vous connecter. Vérifiez vos informations et réessayez.'
+    if (result.error) return authErrorMessage(result.error, email)
     if (createAccount && !result.data.session) {
       return 'Compte créé. Ouvrez le lien reçu par e-mail pour finaliser votre inscription.'
     }
