@@ -96,6 +96,13 @@ supabase secrets set WELCOME_FROM_EMAIL="Le Dressing <bonjour@votre-domaine.fr>"
 Le domaine de l'expéditeur doit être validé dans Resend. La fonction mémorise
 `welcome_email_sent_at` afin de ne pas renvoyer le message à chaque connexion.
 
+Pour utiliser remove.bg lors de l'import d'une photo de vêtement, ajouter la
+clé API remove.bg côté Supabase uniquement :
+
+```bash
+supabase secrets set REMOVE_BG_API_KEY=...
+```
+
 ## Déploiement
 
 ```bash
@@ -104,6 +111,7 @@ supabase db push
 supabase secrets set --env-file supabase/.env.production
 supabase functions deploy analyze-clothing
 supabase functions deploy generate-outfits
+supabase functions deploy remove-background
 supabase functions deploy send-welcome-email
 ```
 

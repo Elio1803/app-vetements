@@ -57,6 +57,7 @@ import { wardrobeStore } from './lib/wardrobe-store'
 import { wardrobeApi } from './lib/wardrobe-api'
 import { createProductPhoto } from './lib/product-photo'
 import {
+  createRemoveBgProductPhoto,
   isSupabaseConfigured,
   loadRemoteWardrobe,
   sendWelcomeEmail,
@@ -515,12 +516,25 @@ function App() {
     setPhotoBusy(true)
     setAddError('')
     try {
-      try {
-        setPhotoData(await createProductPhoto(file))
-      } catch {
-        setPhotoData(await compressPhoto(file))
-        showToast('Détourage indisponible : photo optimisée sans suppression du fond.')
+      let preparedPhoto = ''
+      if (supabase && currentUserId) {
+        try {
+          preparedPhoto = await createRemoveBgProductPhoto(file)
+        } catch {
+          showToast('remove.bg indisponible : détourage gratuit utilisé.')
+        }
       }
+
+      if (!preparedPhoto) {
+        try {
+          preparedPhoto = await createProductPhoto(file)
+        } catch {
+          preparedPhoto = await compressPhoto(file)
+          showToast('Détourage indisponible : photo optimisée sans suppression du fond.')
+        }
+      }
+
+      setPhotoData(preparedPhoto)
     } catch (error) {
       setAddError(error instanceof Error ? error.message : 'Impossible de lire cette photo.')
     } finally {

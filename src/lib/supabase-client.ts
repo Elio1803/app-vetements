@@ -78,6 +78,21 @@ export async function signedPhotoUrl(path: string) {
   return data.signedUrl
 }
 
+export async function createRemoveBgProductPhoto(file: File): Promise<string> {
+  if (!supabase) throw new Error('Supabase n’est pas configuré.')
+  if (!file.type.startsWith('image/')) throw new Error('Ce fichier n’est pas une image.')
+
+  const formData = new FormData()
+  formData.append('image', file, file.name || 'vetement.jpg')
+
+  const { data, error } = await supabase.functions.invoke<{ imageDataUrl: string }>('remove-background', {
+    body: formData,
+  })
+  if (error) throw error
+  if (!data?.imageDataUrl) throw new Error('Photo remove.bg indisponible.')
+  return data.imageDataUrl
+}
+
 export async function sendWelcomeEmail(): Promise<void> {
   if (!supabase) return
   const { error } = await supabase.functions.invoke('send-welcome-email', { body: {} })
