@@ -36,6 +36,7 @@ import {
 } from 'react'
 import { BrandMark } from './components/BrandMark'
 import { ClothingPhoto } from './components/ClothingPhoto'
+import { LoadingScreen } from './components/LoadingScreen'
 import { OutfitBoard } from './components/OutfitBoard'
 import { Sheet } from './components/Sheet'
 import { daysSince, formatLastWorn } from './lib/dates'
@@ -368,6 +369,7 @@ function App() {
   const initialLocalSession = getLocalSession()
   const [authenticated, setAuthenticated] = useState(() => !isSupabaseConfigured && Boolean(initialLocalSession))
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured)
+  const [bootLoading, setBootLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => initialLocalSession?.userId ?? null)
   const [currentEmail, setCurrentEmail] = useState<string | null>(() => initialLocalSession?.email ?? null)
   const [view, setView] = useState<AppView>('wardrobe')
@@ -832,15 +834,9 @@ function App() {
       : 'Un lien de réinitialisation vient de vous être envoyé.'
   }
 
-  if (authLoading) {
-    return (
-      <main className="app-loading" aria-live="polite">
-        <BrandMark />
-        <span className="loading-orbit"><Sparkles size={19} /></span>
-        <p>Ouverture de votre dressing…</p>
-      </main>
-    )
-  }
+  if (bootLoading) return <LoadingScreen onFinish={() => setBootLoading(false)} />
+
+  if (authLoading) return <LoadingScreen persistent />
 
   if (!authenticated) {
     return <LoginScreen onLogin={signIn} onGoogle={signInWithGoogle} onResetPassword={resetPassword} />
