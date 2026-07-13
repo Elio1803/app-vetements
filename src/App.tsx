@@ -55,7 +55,7 @@ import {
 import { useWardrobeStore } from './lib/use-wardrobe-store'
 import { wardrobeStore } from './lib/wardrobe-store'
 import { wardrobeApi } from './lib/wardrobe-api'
-import { createProductPhoto } from './lib/product-photo'
+import { createProductPhoto, focusPhotoOnCategory } from './lib/product-photo'
 import {
   createRemoveBgProductPhoto,
   isSupabaseConfigured,
@@ -544,10 +544,11 @@ function App() {
     setPhotoBusy(true)
     setAddError('')
     try {
+      const focusedFile = await focusPhotoOnCategory(file, addCategory)
       let preparedPhoto = ''
       if (supabase && currentUserId) {
         try {
-          preparedPhoto = await createRemoveBgProductPhoto(file)
+          preparedPhoto = await createRemoveBgProductPhoto(focusedFile)
         } catch {
           showToast('remove.bg indisponible : détourage gratuit utilisé.')
         }
@@ -555,9 +556,9 @@ function App() {
 
       if (!preparedPhoto) {
         try {
-          preparedPhoto = await createProductPhoto(file)
+          preparedPhoto = await createProductPhoto(focusedFile)
         } catch {
-          preparedPhoto = await compressPhoto(file)
+          preparedPhoto = await compressPhoto(focusedFile)
           showToast('Détourage indisponible : photo optimisée sans suppression du fond.')
         }
       }
@@ -568,6 +569,14 @@ function App() {
     } finally {
       setPhotoBusy(false)
       event.target.value = ''
+    }
+  }
+
+  const changeAddCategory = (category: ClothingCategory) => {
+    setAddCategory(category)
+    if (photoData) {
+      setPhotoData('')
+      showToast('Catégorie changée : ajoutez à nouveau la photo pour cibler la bonne pièce.')
     }
   }
 
@@ -1159,7 +1168,20 @@ function App() {
           </button>
         }
       >
-        <div className="photo-advice"><Camera size={17} /><p>Photographiez une seule pièce, bien à plat, sur un fond uni.</p></div>
+        <fieldset className="category-picker category-picker--first">
+          <legend>Quelle pièce voulez-vous isoler ?</legend>
+          <div>
+            {CLOTHING_CATEGORIES.map((value) => (
+              <label className={addCategory === value ? 'is-active' : ''} key={value}>
+                <input type="radio" name="add-category" checked={addCategory === value} onChange={() => changeAddCategory(value)} />
+                {CATEGORY_LABELS_SINGULAR[value]}
+                {addCategory === value && <Check size={14} />}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <div className="photo-advice"><Camera size={17} /><p>Choisissez la catégorie avant la photo : l’app cible cette zone et évite de garder toute la tenue.</p></div>
         {photoData ? (
           <div className="photo-preview">
             <img src={photoData} alt="Aperçu de la pièce à ajouter" />
@@ -1179,18 +1201,6 @@ function App() {
         <input ref={cameraInput} className="sr-only" type="file" accept="image/*" capture="environment" onChange={handlePhoto} />
         <input ref={galleryInput} className="sr-only" type="file" accept="image/*" onChange={handlePhoto} />
 
-        <fieldset className="category-picker">
-          <legend>Quelle catégorie ?</legend>
-          <div>
-            {CLOTHING_CATEGORIES.map((value) => (
-              <label className={addCategory === value ? 'is-active' : ''} key={value}>
-                <input type="radio" name="add-category" checked={addCategory === value} onChange={() => setAddCategory(value)} />
-                {CATEGORY_LABELS_SINGULAR[value]}
-                {addCategory === value && <Check size={14} />}
-              </label>
-            ))}
-          </div>
-        </fieldset>
         <label className="field-label" htmlFor="item-name">Nom de la pièce <span>(facultatif)</span></label>
         <input
           className="text-field"

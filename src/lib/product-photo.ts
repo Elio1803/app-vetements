@@ -1,3 +1,5 @@
+import type { ClothingCategory } from '../types'
+
 const OUTPUT_WIDTH = 1200
 const OUTPUT_HEIGHT = 1500
 
@@ -43,6 +45,46 @@ function makeCutoutReadable(context: CanvasRenderingContext2D, width: number, he
   }
 
   context.putImageData(image, 0, 0)
+}
+
+function focusBounds(category: ClothingCategory, width: number, height: number) {
+  const presets: Record<ClothingCategory, { x: number; y: number; width: number; height: number }> = {
+    haut: { x: 0.14, y: 0.16, width: 0.72, height: 0.56 },
+    bas: { x: 0.14, y: 0.34, width: 0.72, height: 0.62 },
+    chaussures: { x: 0.08, y: 0.66, width: 0.84, height: 0.32 },
+    veste_manteau: { x: 0.1, y: 0.1, width: 0.8, height: 0.78 },
+    accessoire: { x: 0.16, y: 0.12, width: 0.68, height: 0.68 },
+    robe: { x: 0.12, y: 0.12, width: 0.76, height: 0.82 },
+  }
+  const preset = presets[category]
+
+  return {
+    x: Math.max(0, Math.round(width * preset.x)),
+    y: Math.max(0, Math.round(height * preset.y)),
+    width: Math.min(width, Math.round(width * preset.width)),
+    height: Math.min(height, Math.round(height * preset.height)),
+  }
+}
+
+export async function focusPhotoOnCategory(file: File, category: ClothingCategory): Promise<File> {
+  if (!file.type.startsWith('image/')) throw new Error('Ce fichier n’est pas une image.')
+
+  const bitmap = await createImageBitmap(file)
+  const bounds = focusBounds(category, bitmap.width, bitmap.height)
+  const canvas = document.createElement('canvas')
+  canvas.width = bounds.width
+  canvas.height = bounds.height
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Recadrage indisponible sur cet appareil.')
+
+  context.drawImage(bitmap, bounds.x, bounds.y, bounds.width, bounds.height, 0, 0, bounds.width, bounds.height)
+  bitmap.close()
+
+  const blob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Recadrage indisponible.')), 'image/jpeg', 0.94)
+  })
+
+  return new File([blob], file.name || 'vetement.jpg', { type: 'image/jpeg' })
 }
 
 export async function createProductPhoto(file: File): Promise<string> {

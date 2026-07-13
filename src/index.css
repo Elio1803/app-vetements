@@ -1727,6 +1727,10 @@ select {
   border: 0;
 }
 
+.category-picker--first {
+  margin-top: 0;
+}
+
 .category-picker legend,
 .field-label {
   display: block;
