@@ -1698,7 +1698,8 @@ select {
   position: relative;
   height: 310px;
   overflow: hidden;
-  background: #e9e3da;
+  border: 1px solid rgba(30, 28, 25, 0.08);
+  background: #FFFFFF;
 }
 
 .photo-preview img { width: 100%; height: 100%; object-fit: contain; }

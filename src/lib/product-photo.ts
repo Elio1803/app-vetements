@@ -28,6 +28,23 @@ function findVisibleBounds(context: CanvasRenderingContext2D, width: number, hei
     : { x: 0, y: 0, width, height }
 }
 
+function makeCutoutReadable(context: CanvasRenderingContext2D, width: number, height: number) {
+  const image = context.getImageData(0, 0, width, height)
+  const pixels = image.data
+
+  for (let index = 0; index < pixels.length; index += 4) {
+    const alpha = pixels[index + 3]
+    if (alpha <= 12) {
+      pixels[index + 3] = 0
+      continue
+    }
+
+    pixels[index + 3] = 255
+  }
+
+  context.putImageData(image, 0, 0)
+}
+
 export async function createProductPhoto(file: File): Promise<string> {
   const { removeBackground } = await import('@imgly/background-removal')
   const cutout = await removeBackground(file, {
@@ -43,6 +60,7 @@ export async function createProductPhoto(file: File): Promise<string> {
   const sourceContext = source.getContext('2d', { willReadFrequently: true })
   if (!sourceContext) throw new Error('Le détourage est indisponible sur cet appareil.')
   sourceContext.drawImage(bitmap, 0, 0)
+  makeCutoutReadable(sourceContext, bitmap.width, bitmap.height)
   const bounds = findVisibleBounds(sourceContext, bitmap.width, bitmap.height)
 
   const output = document.createElement('canvas')
