@@ -3,6 +3,16 @@ import type { ClothingCategory } from '../types'
 const OUTPUT_WIDTH = 1200
 const OUTPUT_HEIGHT = 1500
 
+export type GarmentFocus =
+  | 'top_short'
+  | 'top_long'
+  | 'short_skirt'
+  | 'pants'
+  | 'shoes'
+  | 'outerwear'
+  | 'dress'
+  | 'accessory'
+
 function canvasAsDataUrl(canvas: HTMLCanvasElement) {
   return canvas.toDataURL('image/jpeg', 0.92)
 }
@@ -47,16 +57,30 @@ function makeCutoutReadable(context: CanvasRenderingContext2D, width: number, he
   context.putImageData(image, 0, 0)
 }
 
-function focusBounds(category: ClothingCategory, width: number, height: number) {
-  const presets: Record<ClothingCategory, { x: number; y: number; width: number; height: number }> = {
-    haut: { x: 0.12, y: 0.1, width: 0.76, height: 0.46 },
-    bas: { x: 0.18, y: 0.42, width: 0.64, height: 0.3 },
-    chaussures: { x: 0.08, y: 0.72, width: 0.84, height: 0.26 },
-    veste_manteau: { x: 0.1, y: 0.1, width: 0.8, height: 0.78 },
-    accessoire: { x: 0.16, y: 0.12, width: 0.68, height: 0.68 },
-    robe: { x: 0.12, y: 0.12, width: 0.76, height: 0.82 },
+export function defaultFocusForCategory(category: ClothingCategory): GarmentFocus {
+  const defaults: Record<ClothingCategory, GarmentFocus> = {
+    haut: 'top_short',
+    bas: 'short_skirt',
+    chaussures: 'shoes',
+    veste_manteau: 'outerwear',
+    accessoire: 'accessory',
+    robe: 'dress',
   }
-  const preset = presets[category]
+  return defaults[category]
+}
+
+function focusBounds(focus: GarmentFocus, width: number, height: number) {
+  const presets: Record<GarmentFocus, { x: number; y: number; width: number; height: number }> = {
+    top_short: { x: 0.12, y: 0.1, width: 0.76, height: 0.42 },
+    top_long: { x: 0.12, y: 0.08, width: 0.76, height: 0.55 },
+    short_skirt: { x: 0.2, y: 0.42, width: 0.6, height: 0.26 },
+    pants: { x: 0.16, y: 0.38, width: 0.68, height: 0.56 },
+    shoes: { x: 0.08, y: 0.72, width: 0.84, height: 0.26 },
+    outerwear: { x: 0.1, y: 0.08, width: 0.8, height: 0.74 },
+    dress: { x: 0.12, y: 0.12, width: 0.76, height: 0.82 },
+    accessory: { x: 0.16, y: 0.12, width: 0.68, height: 0.68 },
+  }
+  const preset = presets[focus]
 
   return {
     x: Math.max(0, Math.round(width * preset.x)),
@@ -66,11 +90,11 @@ function focusBounds(category: ClothingCategory, width: number, height: number) 
   }
 }
 
-export async function focusPhotoOnCategory(file: File, category: ClothingCategory): Promise<File> {
+export async function focusPhotoOnCategory(file: File, focus: GarmentFocus): Promise<File> {
   if (!file.type.startsWith('image/')) throw new Error('Ce fichier n’est pas une image.')
 
   const bitmap = await createImageBitmap(file)
-  const bounds = focusBounds(category, bitmap.width, bitmap.height)
+  const bounds = focusBounds(focus, bitmap.width, bitmap.height)
   const canvas = document.createElement('canvas')
   const padding = Math.round(Math.min(bounds.width, bounds.height) * 0.08)
   canvas.width = bounds.width + padding * 2

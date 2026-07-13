@@ -55,7 +55,7 @@ import {
 import { useWardrobeStore } from './lib/use-wardrobe-store'
 import { wardrobeStore } from './lib/wardrobe-store'
 import { wardrobeApi } from './lib/wardrobe-api'
-import { createProductPhoto, focusPhotoOnCategory } from './lib/product-photo'
+import { createProductPhoto, defaultFocusForCategory, focusPhotoOnCategory, type GarmentFocus } from './lib/product-photo'
 import {
   createRemoveBgProductPhoto,
   isSupabaseConfigured,
@@ -76,6 +76,21 @@ import {
 type AppView = 'wardrobe' | 'generate'
 type SortMode = 'rotation' | 'recent' | 'worn'
 type CategoryFilter = ClothingCategory | 'all'
+
+const GARMENT_FOCUS_OPTIONS: Record<ClothingCategory, Array<{ value: GarmentFocus; label: string }>> = {
+  haut: [
+    { value: 'top_short', label: 'T-shirt / haut court' },
+    { value: 'top_long', label: 'Pull / haut long' },
+  ],
+  bas: [
+    { value: 'short_skirt', label: 'Short / jupe' },
+    { value: 'pants', label: 'Pantalon' },
+  ],
+  chaussures: [{ value: 'shoes', label: 'Chaussures' }],
+  veste_manteau: [{ value: 'outerwear', label: 'Veste / manteau' }],
+  accessoire: [{ value: 'accessory', label: 'Accessoire' }],
+  robe: [{ value: 'dress', label: 'Robe' }],
+}
 
 interface InstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -352,6 +367,7 @@ function App() {
   const [editName, setEditName] = useState('')
   const [editCategory, setEditCategory] = useState<ClothingCategory>('haut')
   const [addCategory, setAddCategory] = useState<ClothingCategory>('haut')
+  const [addFocus, setAddFocus] = useState<GarmentFocus>('top_short')
   const [addName, setAddName] = useState('')
   const [photoData, setPhotoData] = useState('')
   const [photoBusy, setPhotoBusy] = useState(false)
@@ -544,7 +560,7 @@ function App() {
     setPhotoBusy(true)
     setAddError('')
     try {
-      const focusedFile = await focusPhotoOnCategory(file, addCategory)
+      const focusedFile = await focusPhotoOnCategory(file, addFocus)
       let preparedPhoto = ''
       if (supabase && currentUserId) {
         try {
@@ -574,9 +590,18 @@ function App() {
 
   const changeAddCategory = (category: ClothingCategory) => {
     setAddCategory(category)
+    setAddFocus(defaultFocusForCategory(category))
     if (photoData) {
       setPhotoData('')
       showToast('Catégorie changée : ajoutez à nouveau la photo pour cibler la bonne pièce.')
+    }
+  }
+
+  const changeAddFocus = (focus: GarmentFocus) => {
+    setAddFocus(focus)
+    if (photoData) {
+      setPhotoData('')
+      showToast('Cadrage changé : ajoutez à nouveau la photo pour appliquer le bon zoom.')
     }
   }
 
@@ -584,6 +609,7 @@ function App() {
     setPhotoData('')
     setAddName('')
     setAddCategory('haut')
+    setAddFocus('top_short')
     setAddError('')
   }
 
@@ -1176,6 +1202,19 @@ function App() {
                 <input type="radio" name="add-category" checked={addCategory === value} onChange={() => changeAddCategory(value)} />
                 {CATEGORY_LABELS_SINGULAR[value]}
                 {addCategory === value && <Check size={14} />}
+              </label>
+            ))}
+          </div>
+        </fieldset>
+
+        <fieldset className="category-picker crop-picker">
+          <legend>Quel cadrage ?</legend>
+          <div>
+            {GARMENT_FOCUS_OPTIONS[addCategory].map((option) => (
+              <label className={addFocus === option.value ? 'is-active' : ''} key={option.value}>
+                <input type="radio" name="add-focus" checked={addFocus === option.value} onChange={() => changeAddFocus(option.value)} />
+                {option.label}
+                {addFocus === option.value && <Check size={14} />}
               </label>
             ))}
           </div>

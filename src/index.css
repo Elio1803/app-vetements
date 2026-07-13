@@ -1731,6 +1731,14 @@ select {
   margin-top: 0;
 }
 
+.crop-picker {
+  margin-top: -9px;
+}
+
+.crop-picker > div {
+  grid-template-columns: repeat(2, 1fr);
+}
+
 .category-picker legend,
 .field-label {
   display: block;
