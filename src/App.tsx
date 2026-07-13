@@ -79,17 +79,31 @@ type CategoryFilter = ClothingCategory | 'all'
 
 const GARMENT_FOCUS_OPTIONS: Record<ClothingCategory, Array<{ value: GarmentFocus; label: string }>> = {
   haut: [
-    { value: 'top_short', label: 'T-shirt / haut court' },
-    { value: 'top_long', label: 'Pull / haut long' },
+    { value: 'crop_top', label: 'Crop top' },
+    { value: 'top_short', label: 'T-shirt' },
+    { value: 'shirt', label: 'Chemise' },
+    { value: 'top_long', label: 'Pull long' },
+    { value: 'hoodie', label: 'Hoodie' },
   ],
   bas: [
-    { value: 'short_skirt', label: 'Short / jupe' },
-    { value: 'pants', label: 'Pantalon' },
+    { value: 'shorts', label: 'Short' },
+    { value: 'skirt', label: 'Jupe' },
+    { value: 'pants_cropped', label: 'Pantacourt' },
+    { value: 'pants_full', label: 'Pantalon long' },
   ],
   chaussures: [{ value: 'shoes', label: 'Chaussures' }],
-  veste_manteau: [{ value: 'outerwear', label: 'Veste / manteau' }],
-  accessoire: [{ value: 'accessory', label: 'Accessoire' }],
-  robe: [{ value: 'dress', label: 'Robe' }],
+  veste_manteau: [
+    { value: 'jacket_short', label: 'Veste courte' },
+    { value: 'coat_long', label: 'Manteau long' },
+  ],
+  accessoire: [
+    { value: 'bag', label: 'Sac' },
+    { value: 'jewelry', label: 'Bijou / lunettes' },
+  ],
+  robe: [
+    { value: 'dress_short', label: 'Robe courte' },
+    { value: 'dress_long', label: 'Robe longue' },
+  ],
 }
 
 interface InstallPromptEvent extends Event {

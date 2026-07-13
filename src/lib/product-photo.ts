@@ -4,14 +4,22 @@ const OUTPUT_WIDTH = 1200
 const OUTPUT_HEIGHT = 1500
 
 export type GarmentFocus =
+  | 'crop_top'
   | 'top_short'
+  | 'shirt'
   | 'top_long'
-  | 'short_skirt'
-  | 'pants'
+  | 'hoodie'
+  | 'shorts'
+  | 'skirt'
+  | 'pants_cropped'
+  | 'pants_full'
   | 'shoes'
-  | 'outerwear'
-  | 'dress'
-  | 'accessory'
+  | 'jacket_short'
+  | 'coat_long'
+  | 'dress_short'
+  | 'dress_long'
+  | 'bag'
+  | 'jewelry'
 
 function canvasAsDataUrl(canvas: HTMLCanvasElement) {
   return canvas.toDataURL('image/jpeg', 0.92)
@@ -60,25 +68,33 @@ function makeCutoutReadable(context: CanvasRenderingContext2D, width: number, he
 export function defaultFocusForCategory(category: ClothingCategory): GarmentFocus {
   const defaults: Record<ClothingCategory, GarmentFocus> = {
     haut: 'top_short',
-    bas: 'short_skirt',
+    bas: 'shorts',
     chaussures: 'shoes',
-    veste_manteau: 'outerwear',
-    accessoire: 'accessory',
-    robe: 'dress',
+    veste_manteau: 'jacket_short',
+    accessoire: 'bag',
+    robe: 'dress_short',
   }
   return defaults[category]
 }
 
 function focusBounds(focus: GarmentFocus, width: number, height: number) {
   const presets: Record<GarmentFocus, { x: number; y: number; width: number; height: number }> = {
+    crop_top: { x: 0.16, y: 0.18, width: 0.68, height: 0.28 },
     top_short: { x: 0.12, y: 0.1, width: 0.76, height: 0.42 },
+    shirt: { x: 0.11, y: 0.08, width: 0.78, height: 0.5 },
     top_long: { x: 0.12, y: 0.08, width: 0.76, height: 0.55 },
-    short_skirt: { x: 0.2, y: 0.42, width: 0.6, height: 0.26 },
-    pants: { x: 0.16, y: 0.38, width: 0.68, height: 0.56 },
+    hoodie: { x: 0.1, y: 0.05, width: 0.8, height: 0.6 },
+    shorts: { x: 0.2, y: 0.42, width: 0.6, height: 0.26 },
+    skirt: { x: 0.2, y: 0.4, width: 0.6, height: 0.32 },
+    pants_cropped: { x: 0.17, y: 0.39, width: 0.66, height: 0.43 },
+    pants_full: { x: 0.16, y: 0.36, width: 0.68, height: 0.6 },
     shoes: { x: 0.08, y: 0.72, width: 0.84, height: 0.26 },
-    outerwear: { x: 0.1, y: 0.08, width: 0.8, height: 0.74 },
-    dress: { x: 0.12, y: 0.12, width: 0.76, height: 0.82 },
-    accessory: { x: 0.16, y: 0.12, width: 0.68, height: 0.68 },
+    jacket_short: { x: 0.1, y: 0.07, width: 0.8, height: 0.55 },
+    coat_long: { x: 0.1, y: 0.06, width: 0.8, height: 0.82 },
+    dress_short: { x: 0.13, y: 0.16, width: 0.74, height: 0.58 },
+    dress_long: { x: 0.12, y: 0.1, width: 0.76, height: 0.84 },
+    bag: { x: 0.16, y: 0.2, width: 0.68, height: 0.58 },
+    jewelry: { x: 0.22, y: 0.08, width: 0.56, height: 0.42 },
   }
   const preset = presets[focus]
 
