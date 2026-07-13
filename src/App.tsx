@@ -59,6 +59,7 @@ import { wardrobeApi } from './lib/wardrobe-api'
 import { createProductPhoto, defaultFocusForCategory, focusPhotoOnCategory, type GarmentFocus } from './lib/product-photo'
 import {
   createRemoveBgProductPhoto,
+  isGoogleAuthEnabled,
   isSupabaseConfigured,
   loadRemoteWardrobe,
   sendWelcomeEmail,
@@ -323,7 +324,7 @@ function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenProps) {
             </button>
           </form>
           {authError && <p className="form-error auth-error" role="alert">{authError}</p>}
-          {isSupabaseConfigured && (
+          {isSupabaseConfigured && isGoogleAuthEnabled && (
             <>
               <div className="auth-divider"><span>ou</span></div>
               <button className="secondary-button google-button" type="button" onClick={continueWithGoogle} disabled={busy}>
@@ -811,6 +812,9 @@ function App() {
   }
 
   const signInWithGoogle = async () => {
+    if (!isGoogleAuthEnabled) {
+      return 'La connexion Google doit d’abord être activée dans Supabase.'
+    }
     if (!supabase) {
       return 'La connexion Google sera disponible après activation de la synchronisation cloud.'
     }
