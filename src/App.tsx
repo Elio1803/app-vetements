@@ -289,7 +289,7 @@ function ClothingCard({ item, onOpen }: { item: ClothingItem; onOpen: () => void
   return (
     <button className="clothing-card" onClick={onOpen} aria-label={`${item.name ?? 'Pièce sans nom'}, ${status.label}`}>
       <div className="clothing-card-image">
-        <OutfitBoard items={[item]} lookNumber={0} variant="garment" />
+        <img className="clothing-photo clothing-photo--product" src={item.photoUrl} alt={item.name ?? CATEGORY_LABELS_SINGULAR[item.category]} />
         <span className={`worn-badge worn-badge--${status.tone}`}>
           <Clock3 size={12} />
           <span className="worn-badge-full">{status.label}</span>
@@ -1123,7 +1123,7 @@ function App() {
           <div className="photo-picker">
             <div className="photo-picker-icon"><ImagePlus size={26} /></div>
             <strong>{photoBusy ? 'Détourage et mise en valeur…' : 'Ajoutez la photo de votre pièce'}</strong>
-            <p>JPG, PNG ou HEIC · compressée à 800 px</p>
+            <p>JPG, PNG ou HEIC · fond blanc produit</p>
             <div>
               <button className="primary-button" onClick={() => cameraInput.current?.click()} disabled={photoBusy}><Camera size={17} /> Prendre une photo</button>
               <button className="secondary-button" onClick={() => galleryInput.current?.click()} disabled={photoBusy}><Upload size={17} /> Photothèque</button>

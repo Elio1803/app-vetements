@@ -803,12 +803,11 @@ select {
   position: relative;
   overflow: hidden;
   aspect-ratio: 0.82;
-  border: 1px solid rgba(114, 102, 88, 0.13);
-  border-radius: 9px;
-  background: #eee8df;
+  border: 1px solid rgba(30, 28, 25, 0.08);
+  border-radius: 8px;
+  background: #FFFFFF;
 }
 
-.clothing-card-image .outfit-board--garment { min-height: 100%; height: 100%; border-radius: 0; }
 .outfit-board--garment { background: radial-gradient(ellipse at 50% 18%, #fff 0%, #f1efeb 48%, #dedad4 100%); }
 .outfit-board--garment .outfit-board-kicker { top: 10px; left: 10px; font-size: .46rem; }
 .outfit-board--garment .outfit-board-model { bottom: -7px; left: 9%; width: 82%; height: 96%; }
@@ -821,6 +820,11 @@ select {
   height: 100%;
   object-fit: cover;
   transition: transform 260ms ease;
+}
+
+.clothing-card-image .clothing-photo--product {
+  background: #FFFFFF;
+  object-fit: contain;
 }
 
 .clothing-card:hover .clothing-photo {

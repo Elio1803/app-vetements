@@ -2,7 +2,7 @@ const OUTPUT_WIDTH = 1200
 const OUTPUT_HEIGHT = 1500
 
 function canvasAsDataUrl(canvas: HTMLCanvasElement) {
-  return canvas.toDataURL('image/jpeg', 0.9)
+  return canvas.toDataURL('image/jpeg', 0.92)
 }
 
 function findVisibleBounds(context: CanvasRenderingContext2D, width: number, height: number) {
@@ -53,20 +53,15 @@ export async function createProductPhoto(file: File): Promise<string> {
   context.fillStyle = '#FFFFFF'
   context.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT)
 
-  const maximumWidth = OUTPUT_WIDTH * 0.76
-  const maximumHeight = OUTPUT_HEIGHT * 0.76
+  const maximumWidth = OUTPUT_WIDTH * 0.82
+  const maximumHeight = OUTPUT_HEIGHT * 0.82
   const scale = Math.min(maximumWidth / bounds.width, maximumHeight / bounds.height)
   const width = bounds.width * scale
   const height = bounds.height * scale
   const x = (OUTPUT_WIDTH - width) / 2
-  const y = (OUTPUT_HEIGHT - height) / 2 - OUTPUT_HEIGHT * 0.025
+  const y = (OUTPUT_HEIGHT - height) / 2
 
-  context.save()
-  context.shadowColor = 'rgba(34, 31, 28, 0.20)'
-  context.shadowBlur = 24
-  context.shadowOffsetY = 18
   context.drawImage(source, bounds.x, bounds.y, bounds.width, bounds.height, x, y, width, height)
-  context.restore()
   bitmap.close()
 
   return canvasAsDataUrl(output)
