@@ -13,6 +13,8 @@ Edge. La clé Anthropic n'est jamais utilisée par le navigateur.
 - `functions/generate-outfits` choisit au maximum 10 photos, envoie les autres
   pièces comme métadonnées, génère trois tenues et les enregistre dans
   `outfits` ; elle embarque aussi sa propre configuration Deno.
+- `functions/remove-background` appelle remove.bg côté serveur pour préparer
+  les photos produit sur fond blanc sans exposer la clé API au navigateur.
 - `functions/send-welcome-email` envoie une seule fois l'e-mail « Bonjour »
   après la première connexion confirmée, via Resend.
 - `functions/_shared` centralise l'authentification, CORS, le contrôle des
