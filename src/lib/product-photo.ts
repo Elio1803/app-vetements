@@ -50,7 +50,7 @@ function makeCutoutReadable(context: CanvasRenderingContext2D, width: number, he
 function focusBounds(category: ClothingCategory, width: number, height: number) {
   const presets: Record<ClothingCategory, { x: number; y: number; width: number; height: number }> = {
     haut: { x: 0.12, y: 0.1, width: 0.76, height: 0.46 },
-    bas: { x: 0.12, y: 0.43, width: 0.76, height: 0.52 },
+    bas: { x: 0.18, y: 0.42, width: 0.64, height: 0.3 },
     chaussures: { x: 0.08, y: 0.72, width: 0.84, height: 0.26 },
     veste_manteau: { x: 0.1, y: 0.1, width: 0.8, height: 0.78 },
     accessoire: { x: 0.16, y: 0.12, width: 0.68, height: 0.68 },
