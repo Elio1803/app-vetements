@@ -131,6 +131,11 @@ function fileAsDataUrl(file: File): Promise<string> {
   })
 }
 
+function authRedirectUrl() {
+  const baseUrl = import.meta.env.BASE_URL || '/'
+  return new URL(baseUrl, window.location.origin).href
+}
+
 async function compressPhoto(file: File): Promise<string> {
   if (!file.type.startsWith('image/')) throw new Error('Ce fichier n’est pas une image.')
   try {
@@ -718,7 +723,11 @@ function App() {
       }
     }
     const result = createAccount
-      ? await supabase.auth.signUp({ email, password })
+      ? await supabase.auth.signUp({
+          email,
+          password,
+          options: { emailRedirectTo: authRedirectUrl() },
+        })
       : await supabase.auth.signInWithPassword({ email, password })
     if (result.error) return 'Impossible de vous connecter. Vérifiez vos informations et réessayez.'
     if (createAccount && !result.data.session) {
@@ -733,7 +742,7 @@ function App() {
     }
     const { error } = await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: window.location.origin },
+      options: { redirectTo: authRedirectUrl() },
     })
     return error ? 'La connexion Google n’a pas pu démarrer.' : null
   }
@@ -744,7 +753,7 @@ function App() {
       return 'Sur cet appareil, créez un nouveau compte si le mot de passe est perdu. La réinitialisation par e-mail nécessite la synchronisation cloud.'
     }
     const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin,
+      redirectTo: authRedirectUrl(),
     })
     return error
       ? 'Impossible d’envoyer l’e-mail de réinitialisation.'
