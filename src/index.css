@@ -107,7 +107,7 @@ button:disabled {
   display: flex;
   align-items: center;
   flex-direction: column;
-  gap: 14px;
+  gap: 12px;
 }
 
 .loading-hanger {
@@ -123,7 +123,16 @@ button:disabled {
   font-weight: 500;
   letter-spacing: .18em;
   text-transform: uppercase;
-  animation: loading-logo-in 900ms ease 900ms both;
+  animation: loading-logo-in 820ms ease 360ms both;
+}
+
+.loading-brand small {
+  color: rgba(243, 236, 221, .62);
+  font-size: .68rem;
+  font-weight: 600;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  animation: loading-subtitle-in 720ms ease 700ms both;
 }
 
 @keyframes loading-fall {
@@ -159,9 +168,21 @@ button:disabled {
   50% { transform: translateY(-4px); }
 }
 
+@keyframes loading-subtitle-in {
+  from {
+    opacity: 0;
+    transform: translateY(5px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .loading-falling-item,
   .loading-brand strong,
+  .loading-brand small,
   .loading-hanger {
     animation: none;
   }

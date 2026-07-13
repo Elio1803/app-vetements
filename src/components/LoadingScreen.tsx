@@ -101,6 +101,7 @@ export function LoadingScreen({ brand = 'Le Dressing', onFinish, persistent = fa
       <div className="loading-brand">
         <span className="loading-hanger"><HangerIcon size={34} color="#F3ECDD" /></span>
         <strong>{brand}</strong>
+        <small>Préparation de votre dressing</small>
       </div>
     </div>
   )
