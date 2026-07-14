@@ -1,4 +1,4 @@
-const CACHE_NAME = 'le-dressing-v3'
+const CACHE_NAME = 'le-dressing-v4'
 const resolveFromScope = (path) => new URL(path, self.registration.scope).href
 const APP_SHELL = [
   '',

@@ -2122,6 +2122,7 @@ select {
 .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
 .auth-tabs button { min-height: 44px; padding: 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font-size: .7rem; font-weight: 600; }
 .auth-tabs button.is-active { border-bottom-color: var(--ink); color: var(--ink); }
+.auth-field-check { display: none !important; }
 .password-label-row { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; }
 .password-label-row .field-label { margin: 0 0 9px; }
 .password-label-row .text-link { min-height: auto; margin-bottom: 8px; border: 0; font-size: .58rem; }
@@ -2138,7 +2139,8 @@ select {
   z-index: 10000;
   inset: 0;
   display: grid;
-  place-items: center;
+  align-items: start;
+  justify-items: center;
   padding: 24px;
   background:
     radial-gradient(circle at 50% 45%, rgba(132, 196, 132, .34), transparent 18rem),
@@ -2152,6 +2154,7 @@ select {
 .login-success-card {
   position: relative;
   display: flex;
+  margin-top: clamp(54px, 13vh, 140px);
   width: min(100%, 420px);
   min-height: 360px;
   align-items: center;
@@ -2248,7 +2251,7 @@ select {
 @keyframes login-success-card {
   0% {
     opacity: 0;
-    transform: translateY(18px) scale(.94);
+    transform: translateY(-8px) scale(.94);
   }
   24%, 76% {
     opacity: 1;
@@ -2257,6 +2260,25 @@ select {
   100% {
     opacity: 0;
     transform: translateY(-16px) scale(.98);
+  }
+}
+
+@media (max-width: 680px) {
+  .login-success-overlay {
+    padding: calc(18px + env(safe-area-inset-top)) 18px 18px;
+  }
+
+  .login-success-card {
+    width: min(100%, 350px);
+    min-height: 310px;
+    margin-top: clamp(24px, 8vh, 70px);
+    padding: 38px 24px;
+    border-radius: 34px;
+  }
+
+  .login-success-check {
+    width: 132px;
+    height: 132px;
   }
 }
 
