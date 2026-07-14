@@ -243,8 +243,6 @@ function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenProps) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [authError, setAuthError] = useState('')
-  const emailValid = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email.trim())
-  const passwordValid = password.length >= 8
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -318,26 +316,12 @@ function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenProps) {
 
           <form onSubmit={submit}>
             <label className="field-label" htmlFor="email">Adresse e-mail</label>
-            <div className={emailValid ? 'auth-field auth-field--valid' : 'auth-field'}>
-              <input className="text-field" id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="vous@exemple.fr" required />
-              {emailValid && (
-                <span className="auth-field-check" aria-label="Adresse e-mail valide">
-                  <Check size={26} strokeWidth={3} />
-                </span>
-              )}
-            </div>
+            <input className="text-field" id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="vous@exemple.fr" required />
             <div className="password-label-row">
               <label className="field-label" htmlFor="password">Mot de passe</label>
               {!createAccount && <button type="button" className="text-link" onClick={resetPassword}>Mot de passe oublié ?</button>}
             </div>
-            <div className={passwordValid ? 'auth-field auth-field--valid' : 'auth-field'}>
-              <input className="text-field" id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8 caractères minimum" minLength={8} required />
-              {passwordValid && (
-                <span className="auth-field-check" aria-label="Mot de passe valide">
-                  <Check size={26} strokeWidth={3} />
-                </span>
-              )}
-            </div>
+            <input className="text-field" id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8 caractères minimum" minLength={8} required />
             <button className="primary-button auth-submit" type="submit" disabled={busy} aria-busy={busy}>
               {busy ? 'Un instant…' : createAccount ? 'Créer mon compte' : 'Se connecter'}
               {!busy && <ChevronRight size={18} />}
@@ -369,7 +353,7 @@ function LoginSuccessOverlay({ message }: { message: string }) {
     <div className="login-success-overlay" role="status" aria-live="polite">
       <div className="login-success-card">
         <span className="login-success-check" aria-hidden="true">
-          <Check size={54} strokeWidth={2.7} />
+          <Check size={72} strokeWidth={2.7} />
         </span>
         <strong>{message}</strong>
         <small>Ouverture de votre dressing…</small>

@@ -2122,56 +2122,6 @@ select {
 .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
 .auth-tabs button { min-height: 44px; padding: 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font-size: .7rem; font-weight: 600; }
 .auth-tabs button.is-active { border-bottom-color: var(--ink); color: var(--ink); }
-.auth-field {
-  position: relative;
-}
-
-.auth-field .text-field {
-  width: 100%;
-  padding-right: 62px;
-  transition:
-    border-color 220ms ease,
-    box-shadow 220ms ease,
-    background 220ms ease;
-}
-
-.auth-field--valid .text-field {
-  border-color: rgba(77, 134, 81, .52);
-  box-shadow: 0 0 0 4px rgba(91, 155, 96, .12);
-}
-
-.auth-field-check {
-  position: absolute;
-  top: 50%;
-  right: 13px;
-  display: grid;
-  width: 42px;
-  height: 42px;
-  place-items: center;
-  border-radius: 50%;
-  background: linear-gradient(135deg, #7fba7e, #3f7d49);
-  color: white;
-  box-shadow:
-    0 10px 24px rgba(67, 128, 72, .26),
-    inset 0 0 0 1px rgba(255, 255, 255, .36);
-  transform: translateY(-50%);
-  animation: auth-field-check-pop 520ms cubic-bezier(.2, 1.55, .36, 1) both;
-  pointer-events: none;
-}
-
-.auth-field-check::before {
-  position: absolute;
-  inset: -7px;
-  border: 1px solid rgba(92, 153, 97, .32);
-  border-radius: inherit;
-  content: "";
-  animation: auth-field-check-ripple 760ms ease-out both;
-}
-
-.auth-field-check svg {
-  animation: auth-field-check-draw 420ms ease 90ms both;
-}
-
 .password-label-row { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; }
 .password-label-row .field-label { margin: 0 0 9px; }
 .password-label-row .text-link { min-height: auto; margin-bottom: 8px; border: 0; font-size: .58rem; }
@@ -2191,43 +2141,63 @@ select {
   place-items: center;
   padding: 24px;
   background:
-    radial-gradient(circle at center, rgba(103, 146, 105, .22), transparent 19rem),
-    rgba(18, 19, 16, .36);
-  backdrop-filter: blur(12px);
-  animation: login-success-backdrop 980ms ease both;
+    radial-gradient(circle at 50% 45%, rgba(132, 196, 132, .34), transparent 18rem),
+    radial-gradient(circle at 50% 52%, rgba(255, 253, 249, .32), transparent 28rem),
+    rgba(18, 19, 16, .52);
+  backdrop-filter: blur(18px);
+  animation: login-success-backdrop 1.08s ease both;
   pointer-events: none;
 }
 
 .login-success-card {
+  position: relative;
   display: flex;
-  width: min(100%, 350px);
-  min-height: 285px;
+  width: min(100%, 420px);
+  min-height: 360px;
   align-items: center;
   justify-content: center;
   flex-direction: column;
-  gap: 14px;
-  padding: 34px 28px;
-  border: 1px solid rgba(255, 255, 255, .45);
-  border-radius: 32px;
-  background: linear-gradient(180deg, rgba(255, 253, 249, .96), rgba(240, 248, 236, .93));
-  box-shadow: 0 24px 70px rgba(48, 78, 50, .22);
+  gap: 18px;
+  padding: 48px 34px;
+  border: 1px solid rgba(255, 255, 255, .58);
+  border-radius: 42px;
+  background:
+    linear-gradient(145deg, rgba(255, 255, 255, .98), rgba(238, 249, 235, .94)),
+    radial-gradient(circle at top, rgba(126, 185, 126, .18), transparent 18rem);
+  box-shadow:
+    0 34px 95px rgba(35, 78, 40, .3),
+    inset 0 1px 0 rgba(255, 255, 255, .8);
   text-align: center;
-  animation: login-success-card 880ms cubic-bezier(.22, 1, .36, 1) both;
+  animation: login-success-card 1.02s cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.login-success-card::before {
+  position: absolute;
+  width: 220px;
+  height: 220px;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(113, 175, 114, .18), transparent 68%);
+  content: "";
+  filter: blur(2px);
 }
 
 .login-success-check {
   position: relative;
+  z-index: 1;
   display: grid;
-  width: 116px;
-  height: 116px;
+  width: 154px;
+  height: 154px;
   place-items: center;
   border-radius: 50%;
-  background: linear-gradient(135deg, #70a66f, #3f7b48);
+  background:
+    radial-gradient(circle at 32% 25%, rgba(255, 255, 255, .48), transparent 28%),
+    linear-gradient(135deg, #8bd48a, #3c8b48 62%, #2f703a);
   color: white;
   box-shadow:
-    0 16px 34px rgba(68, 125, 73, .32),
-    inset 0 0 0 1px rgba(255, 255, 255, .38);
-  animation: login-success-pop 680ms cubic-bezier(.2, 1.5, .38, 1) both;
+    0 22px 48px rgba(50, 126, 58, .38),
+    0 0 0 14px rgba(104, 175, 107, .13),
+    inset 0 0 0 1px rgba(255, 255, 255, .46);
+  animation: login-success-pop 760ms cubic-bezier(.2, 1.55, .38, 1) both;
 }
 
 .login-success-check::before,
@@ -2250,56 +2220,23 @@ select {
 }
 
 .login-success-card strong {
+  position: relative;
+  z-index: 1;
   color: #2f5d35;
   font-family: var(--serif);
-  font-size: 1.55rem;
+  font-size: clamp(2rem, 8vw, 2.75rem);
   font-weight: 600;
   letter-spacing: -.03em;
 }
 
 .login-success-card small {
+  position: relative;
+  z-index: 1;
   color: #667560;
-  font-size: .68rem;
+  font-size: .78rem;
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
-}
-
-@keyframes auth-field-check-pop {
-  0% {
-    opacity: 0;
-    transform: translateY(-50%) scale(.42);
-  }
-  62% {
-    opacity: 1;
-    transform: translateY(-50%) scale(1.14);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(-50%) scale(1);
-  }
-}
-
-@keyframes auth-field-check-ripple {
-  from {
-    opacity: .82;
-    transform: scale(.72);
-  }
-  to {
-    opacity: 0;
-    transform: scale(1.45);
-  }
-}
-
-@keyframes auth-field-check-draw {
-  from {
-    opacity: 0;
-    transform: scale(.56) rotate(-10deg);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1) rotate(0);
-  }
 }
 
 @keyframes login-success-backdrop {
