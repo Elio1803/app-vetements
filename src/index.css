@@ -49,6 +49,7 @@
 
 * {
   box-sizing: border-box;
+  -webkit-tap-highlight-color: transparent;
 }
 
 html {
@@ -66,6 +67,9 @@ body {
     radial-gradient(circle at 92% 0%, rgba(212, 201, 181, 0.25), transparent 26rem),
     var(--ivory);
   color: var(--ink);
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
 }
 
 body,
@@ -81,6 +85,13 @@ input,
 textarea,
 select {
   font-size: 1rem;
+}
+
+input,
+textarea {
+  -webkit-touch-callout: default;
+  -webkit-user-select: text;
+  user-select: text;
 }
 
 button {
