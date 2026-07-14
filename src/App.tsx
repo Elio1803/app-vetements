@@ -395,6 +395,7 @@ function App() {
   const [generating, setGenerating] = useState(false)
   const [wearCandidate, setWearCandidate] = useState<OutfitSuggestion | null>(null)
   const [toast, setToast] = useState('')
+  const [appEntering, setAppEntering] = useState(false)
   const [today, setToday] = useState(() => new Date())
   const [canInstall, setCanInstall] = useState(false)
   const [isInstalled, setIsInstalled] = useState(() => {
@@ -459,6 +460,12 @@ function App() {
       document.removeEventListener('visibilitychange', refreshDate)
     }
   }, [])
+
+  useEffect(() => {
+    if (!appEntering) return undefined
+    const timer = window.setTimeout(() => setAppEntering(false), 950)
+    return () => window.clearTimeout(timer)
+  }, [appEntering])
 
   useEffect(() => {
     const handleBeforeInstall = (event: Event) => {
@@ -776,6 +783,7 @@ function App() {
     setCurrentUserId(null)
     setCurrentEmail(null)
     setAccountOpen(false)
+    setAppEntering(false)
     setAuthenticated(false)
   }
 
@@ -788,6 +796,7 @@ function App() {
         wardrobeStore.switchToAccount(session.userId)
         setCurrentUserId(session.userId)
         setCurrentEmail(session.email)
+        setAppEntering(true)
         setAuthenticated(true)
         if (createAccount) showToast(`Bonjour ${session.email.split('@')[0]}, votre dressing est prêt.`)
         return null
@@ -808,6 +817,7 @@ function App() {
     if (createAccount && !result.data.session) {
       return 'Compte créé. Ouvrez le lien reçu par e-mail pour finaliser votre inscription.'
     }
+    setAppEntering(true)
     return null
   }
 
@@ -847,7 +857,7 @@ function App() {
   }
 
   return (
-    <div className="app-shell">
+    <div className={appEntering ? 'app-shell app-shell--entering' : 'app-shell'}>
       <aside className="desktop-sidebar">
         <BrandMark />
         <nav className="desktop-nav" aria-label="Navigation principale">

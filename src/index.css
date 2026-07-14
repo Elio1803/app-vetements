@@ -249,6 +249,27 @@ select {
   min-height: 100vh;
 }
 
+.app-shell--entering {
+  animation: app-entry-fade 760ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.app-shell--entering .desktop-sidebar,
+.app-shell--entering .mobile-header,
+.app-shell--entering .mobile-nav {
+  animation: app-entry-chrome 720ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.app-shell--entering .page-content {
+  animation: app-entry-scroll 820ms cubic-bezier(.18, 1, .32, 1) 70ms both;
+}
+
+.app-shell--entering .quick-start,
+.app-shell--entering .rotation-panel,
+.app-shell--entering .clothing-grid,
+.app-shell--entering .generator-layout {
+  animation: app-entry-lift 780ms cubic-bezier(.18, 1, .32, 1) 130ms both;
+}
+
 .app-loading {
   display: flex;
   min-height: 100vh;
@@ -2068,6 +2089,50 @@ select {
 }
 
 @keyframes toast-in { from { transform: translateY(10px); opacity: 0; } }
+
+@keyframes app-entry-fade {
+  from {
+    opacity: .72;
+    transform: scale(.992);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+@keyframes app-entry-chrome {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes app-entry-scroll {
+  from {
+    opacity: 0;
+    transform: translateY(42px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes app-entry-lift {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 
 /* Auth */
 .auth-shell {
