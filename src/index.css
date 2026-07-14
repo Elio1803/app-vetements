@@ -126,7 +126,8 @@ button:disabled {
   left: var(--left);
   color: #714c3e;
   animation: loading-fall var(--duration) cubic-bezier(.32,.1,.28,1) var(--delay) both;
-  filter: drop-shadow(0 10px 18px rgba(87, 60, 45, .18));
+  filter: drop-shadow(0 18px 30px rgba(87, 60, 45, .2));
+  transform-origin: center;
 }
 
 .loading-falling-item:nth-child(3n + 1) { color: #714c3e; }
@@ -175,15 +176,15 @@ button:disabled {
 @keyframes loading-fall {
   0% {
     opacity: 0;
-    transform: translate3d(0, -20vh, 0) rotate(var(--rotate-start)) scale(.82);
+    transform: translate3d(-50%, -26vh, 0) rotate(var(--rotate-start)) scale(.76);
   }
   12% { opacity: 1; }
   50% {
-    transform: translate3d(var(--drift), 53vh, 0) rotate(calc(var(--rotate-start) * .3)) scale(1.08);
+    transform: translate3d(calc(-50% + var(--drift)), 52vh, 0) rotate(calc(var(--rotate-start) * .3)) scale(1.12);
   }
   100% {
     opacity: .9;
-    transform: translate3d(0, 120vh, 0) rotate(var(--rotate-end)) scale(1);
+    transform: translate3d(-50%, 124vh, 0) rotate(var(--rotate-end)) scale(1.03);
   }
 }
 

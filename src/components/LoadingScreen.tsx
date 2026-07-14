@@ -15,13 +15,15 @@ interface IconProps {
 
 const ITEM_TYPES = ['shirt', 'hanger', 'pants'] as const
 
-const FALLING_ITEMS = Array.from({ length: 10 }).map((_, index) => {
+const SIDE_POSITIONS = [-18, -7, 5, 18, 34, 50, 66, 82, 95, 108, 119, 42]
+
+const FALLING_ITEMS = Array.from({ length: 12 }).map((_, index) => {
   const type = ITEM_TYPES[index % ITEM_TYPES.length]
-  const left = 8 + ((index * 10.5) % 84)
-  const size = 38 + ((index * 9) % 30)
+  const left = SIDE_POSITIONS[index % SIDE_POSITIONS.length]
+  const size = 62 + ((index * 13) % 52)
   const delay = (index % 5) * 0.14
-  const duration = 1.95 + ((index * 13) % 6) / 10
-  const drift = (index % 2 === 0 ? 1 : -1) * (26 + (index % 4) * 8)
+  const duration = 2.05 + ((index * 13) % 6) / 10
+  const drift = (index % 2 === 0 ? 1 : -1) * (44 + (index % 4) * 12)
   const rotateStart = (index % 2 === 0 ? -1 : 1) * (15 + (index % 3) * 10)
   const rotateEnd = (index % 2 === 0 ? 1 : -1) * (25 + (index % 4) * 8)
   return { id: index, type, left, size, delay, duration, drift, rotateStart, rotateEnd }
@@ -97,7 +99,7 @@ export function LoadingScreen({ brand = 'Le Dressing', onFinish, persistent = fa
       ))}
 
       <div className="loading-brand">
-        <span className="loading-hanger"><HangerIcon size={48} /></span>
+        <span className="loading-hanger"><HangerIcon size={64} /></span>
         <strong>{brand}</strong>
         <small>Préparation de votre dressing</small>
       </div>
