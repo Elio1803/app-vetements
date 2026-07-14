@@ -249,6 +249,10 @@ select {
   min-height: 100vh;
 }
 
+.app-shell--opening {
+  animation: app-open-scroll 720ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
 .app-loading {
   display: flex;
   min-height: 100vh;
@@ -2128,6 +2132,148 @@ select {
 .google-g { font-family: Arial, sans-serif; color: #4068c9; font-weight: 700; }
 .demo-note { margin: 18px 0 0; color: #948d83; font-size: .56rem; line-height: 1.5; text-align: center; }
 .auth-error { margin-bottom: 0; }
+
+.login-success-overlay {
+  position: fixed;
+  z-index: 10000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(circle at center, rgba(103, 146, 105, .22), transparent 19rem),
+    rgba(18, 19, 16, .36);
+  backdrop-filter: blur(12px);
+  animation: login-success-backdrop 980ms ease both;
+  pointer-events: none;
+}
+
+.login-success-card {
+  display: flex;
+  width: min(100%, 310px);
+  min-height: 250px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 14px;
+  padding: 34px 28px;
+  border: 1px solid rgba(255, 255, 255, .45);
+  border-radius: 32px;
+  background: linear-gradient(180deg, rgba(255, 253, 249, .96), rgba(240, 248, 236, .93));
+  box-shadow: 0 24px 70px rgba(48, 78, 50, .22);
+  text-align: center;
+  animation: login-success-card 880ms cubic-bezier(.22, 1, .36, 1) both;
+}
+
+.login-success-check {
+  position: relative;
+  display: grid;
+  width: 92px;
+  height: 92px;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #70a66f, #3f7b48);
+  color: white;
+  box-shadow:
+    0 16px 34px rgba(68, 125, 73, .32),
+    inset 0 0 0 1px rgba(255, 255, 255, .38);
+  animation: login-success-pop 680ms cubic-bezier(.2, 1.5, .38, 1) both;
+}
+
+.login-success-check::before,
+.login-success-check::after {
+  position: absolute;
+  inset: -10px;
+  border: 1px solid rgba(95, 154, 96, .34);
+  border-radius: inherit;
+  content: "";
+  animation: login-success-ripple 1.05s ease-out both;
+}
+
+.login-success-check::after {
+  inset: -20px;
+  animation-delay: 130ms;
+}
+
+.login-success-check svg {
+  animation: login-success-checkmark 560ms ease 170ms both;
+}
+
+.login-success-card strong {
+  color: #2f5d35;
+  font-family: var(--serif);
+  font-size: 1.55rem;
+  font-weight: 600;
+  letter-spacing: -.03em;
+}
+
+.login-success-card small {
+  color: #667560;
+  font-size: .68rem;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+@keyframes login-success-backdrop {
+  0% { opacity: 0; }
+  18%, 74% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes login-success-card {
+  0% {
+    opacity: 0;
+    transform: translateY(18px) scale(.94);
+  }
+  24%, 76% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translateY(-16px) scale(.98);
+  }
+}
+
+@keyframes login-success-pop {
+  0% { transform: scale(.55); }
+  58% { transform: scale(1.08); }
+  100% { transform: scale(1); }
+}
+
+@keyframes login-success-ripple {
+  from {
+    opacity: .8;
+    transform: scale(.78);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.28);
+  }
+}
+
+@keyframes login-success-checkmark {
+  from {
+    opacity: 0;
+    transform: scale(.65) rotate(-8deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
+}
+
+@keyframes app-open-scroll {
+  from {
+    opacity: 0;
+    transform: translateY(28px) scale(.985);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
 
 @media (min-width: 1450px) {
   .clothing-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
