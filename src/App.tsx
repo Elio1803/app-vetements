@@ -227,10 +227,6 @@ function formatToday(date: Date) {
   return `${formatted.charAt(0).toLocaleUpperCase('fr')}${formatted.slice(1)}`
 }
 
-function wait(milliseconds: number) {
-  return new Promise((resolve) => window.setTimeout(resolve, milliseconds))
-}
-
 interface LoginScreenProps {
   onLogin: (email: string, password: string, createAccount: boolean) => Promise<string | null>
   onGoogle: () => Promise<string | null>
@@ -348,20 +344,6 @@ function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenProps) {
   )
 }
 
-function LoginSuccessOverlay({ message }: { message: string }) {
-  return (
-    <div className="login-success-overlay" role="status" aria-live="polite">
-      <div className="login-success-card">
-        <span className="login-success-check" aria-hidden="true">
-          <Check size={72} strokeWidth={2.7} />
-        </span>
-        <strong>{message}</strong>
-        <small>Ouverture de votre dressing…</small>
-      </div>
-    </div>
-  )
-}
-
 function ClothingCard({ item, onOpen }: { item: ClothingItem; onOpen: () => void }) {
   const status = itemStatus(item)
   return (
@@ -413,9 +395,6 @@ function App() {
   const [generating, setGenerating] = useState(false)
   const [wearCandidate, setWearCandidate] = useState<OutfitSuggestion | null>(null)
   const [toast, setToast] = useState('')
-  const [loginCelebration, setLoginCelebration] = useState(false)
-  const [loginSuccessMessage, setLoginSuccessMessage] = useState('Mot de passe validé')
-  const [appOpening, setAppOpening] = useState(false)
   const [today, setToday] = useState(() => new Date())
   const [canInstall, setCanInstall] = useState(false)
   const [isInstalled, setIsInstalled] = useState(() => {
@@ -482,12 +461,6 @@ function App() {
   }, [])
 
   useEffect(() => {
-    if (!appOpening) return undefined
-    const timer = window.setTimeout(() => setAppOpening(false), 900)
-    return () => window.clearTimeout(timer)
-  }, [appOpening])
-
-  useEffect(() => {
     const handleBeforeInstall = (event: Event) => {
       event.preventDefault()
       installPrompt.current = event as InstallPromptEvent
@@ -550,14 +523,6 @@ function App() {
   const showToast = (message: string) => {
     setToast(message)
     window.setTimeout(() => setToast(''), 3200)
-  }
-
-  const playLoginSuccess = async (message: string) => {
-    setLoginSuccessMessage(message)
-    setLoginCelebration(true)
-    setAppOpening(true)
-    await wait(950)
-    window.setTimeout(() => setLoginCelebration(false), 420)
   }
 
   const startEmergencyLook = () => {
@@ -823,7 +788,6 @@ function App() {
         wardrobeStore.switchToAccount(session.userId)
         setCurrentUserId(session.userId)
         setCurrentEmail(session.email)
-        await playLoginSuccess(createAccount ? 'Compte prêt' : 'Mot de passe validé')
         setAuthenticated(true)
         if (createAccount) showToast(`Bonjour ${session.email.split('@')[0]}, votre dressing est prêt.`)
         return null
@@ -844,7 +808,6 @@ function App() {
     if (createAccount && !result.data.session) {
       return 'Compte créé. Ouvrez le lien reçu par e-mail pour finaliser votre inscription.'
     }
-    await playLoginSuccess(createAccount ? 'Compte prêt' : 'Mot de passe validé')
     return null
   }
 
@@ -880,16 +843,11 @@ function App() {
   if (authLoading) return <LoadingScreen persistent />
 
   if (!authenticated) {
-    return (
-      <>
-        <LoginScreen onLogin={signIn} onGoogle={signInWithGoogle} onResetPassword={resetPassword} />
-        {loginCelebration && <LoginSuccessOverlay message={loginSuccessMessage} />}
-      </>
-    )
+    return <LoginScreen onLogin={signIn} onGoogle={signInWithGoogle} onResetPassword={resetPassword} />
   }
 
   return (
-    <div className={appOpening ? 'app-shell app-shell--opening' : 'app-shell'}>
+    <div className="app-shell">
       <aside className="desktop-sidebar">
         <BrandMark />
         <nav className="desktop-nav" aria-label="Navigation principale">
@@ -1412,7 +1370,6 @@ function App() {
       </Sheet>
 
       {toast && <div className="toast" role="status"><Check size={17} /> {toast}</div>}
-      {loginCelebration && <LoginSuccessOverlay message={loginSuccessMessage} />}
     </div>
   )
 }
