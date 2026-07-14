@@ -250,24 +250,25 @@ select {
 }
 
 .app-shell--entering {
-  animation: app-entry-fade 760ms cubic-bezier(.22, 1, .36, 1) both;
+  animation: app-entry-fade 980ms cubic-bezier(.16, 1, .3, 1) both;
+  transform-origin: center top;
 }
 
 .app-shell--entering .desktop-sidebar,
 .app-shell--entering .mobile-header,
 .app-shell--entering .mobile-nav {
-  animation: app-entry-chrome 720ms cubic-bezier(.22, 1, .36, 1) both;
+  animation: app-entry-chrome 980ms cubic-bezier(.16, 1, .3, 1) both;
 }
 
 .app-shell--entering .page-content {
-  animation: app-entry-scroll 820ms cubic-bezier(.18, 1, .32, 1) 70ms both;
+  animation: app-entry-scroll 1080ms cubic-bezier(.16, 1, .3, 1) 90ms both;
 }
 
 .app-shell--entering .quick-start,
 .app-shell--entering .rotation-panel,
 .app-shell--entering .clothing-grid,
 .app-shell--entering .generator-layout {
-  animation: app-entry-lift 780ms cubic-bezier(.18, 1, .32, 1) 130ms both;
+  animation: app-entry-lift 980ms cubic-bezier(.16, 1, .3, 1) 190ms both;
 }
 
 .app-loading {
@@ -2092,11 +2093,13 @@ select {
 
 @keyframes app-entry-fade {
   from {
-    opacity: .72;
-    transform: scale(.992);
+    opacity: .42;
+    filter: blur(10px);
+    transform: translateY(22px) scale(.975);
   }
   to {
     opacity: 1;
+    filter: blur(0);
     transform: scale(1);
   }
 }
@@ -2104,7 +2107,7 @@ select {
 @keyframes app-entry-chrome {
   from {
     opacity: 0;
-    transform: translateY(18px);
+    transform: translateY(34px);
   }
   to {
     opacity: 1;
@@ -2115,7 +2118,7 @@ select {
 @keyframes app-entry-scroll {
   from {
     opacity: 0;
-    transform: translateY(42px);
+    transform: translateY(82px);
   }
   to {
     opacity: 1;
@@ -2126,7 +2129,7 @@ select {
 @keyframes app-entry-lift {
   from {
     opacity: 0;
-    transform: translateY(28px) scale(.985);
+    transform: translateY(58px) scale(.965);
   }
   to {
     opacity: 1;

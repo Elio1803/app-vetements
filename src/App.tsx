@@ -407,6 +407,7 @@ function App() {
   const installPrompt = useRef<InstallPromptEvent | null>(null)
   const storagePaths = useRef(new Map<string, string>())
   const activeUser = useRef<string | null>(null)
+  const initialEntryPlayed = useRef(false)
 
   useEffect(() => {
     if (!supabase) return
@@ -463,9 +464,15 @@ function App() {
 
   useEffect(() => {
     if (!appEntering) return undefined
-    const timer = window.setTimeout(() => setAppEntering(false), 950)
+    const timer = window.setTimeout(() => setAppEntering(false), 1200)
     return () => window.clearTimeout(timer)
   }, [appEntering])
+
+  useEffect(() => {
+    if (bootLoading || authLoading || !authenticated || initialEntryPlayed.current) return
+    initialEntryPlayed.current = true
+    setAppEntering(true)
+  }, [authenticated, authLoading, bootLoading])
 
   useEffect(() => {
     const handleBeforeInstall = (event: Event) => {
