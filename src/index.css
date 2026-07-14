@@ -2122,6 +2122,56 @@ select {
 .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
 .auth-tabs button { min-height: 44px; padding: 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font-size: .7rem; font-weight: 600; }
 .auth-tabs button.is-active { border-bottom-color: var(--ink); color: var(--ink); }
+.auth-field {
+  position: relative;
+}
+
+.auth-field .text-field {
+  width: 100%;
+  padding-right: 62px;
+  transition:
+    border-color 220ms ease,
+    box-shadow 220ms ease,
+    background 220ms ease;
+}
+
+.auth-field--valid .text-field {
+  border-color: rgba(77, 134, 81, .52);
+  box-shadow: 0 0 0 4px rgba(91, 155, 96, .12);
+}
+
+.auth-field-check {
+  position: absolute;
+  top: 50%;
+  right: 13px;
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #7fba7e, #3f7d49);
+  color: white;
+  box-shadow:
+    0 10px 24px rgba(67, 128, 72, .26),
+    inset 0 0 0 1px rgba(255, 255, 255, .36);
+  transform: translateY(-50%);
+  animation: auth-field-check-pop 520ms cubic-bezier(.2, 1.55, .36, 1) both;
+  pointer-events: none;
+}
+
+.auth-field-check::before {
+  position: absolute;
+  inset: -7px;
+  border: 1px solid rgba(92, 153, 97, .32);
+  border-radius: inherit;
+  content: "";
+  animation: auth-field-check-ripple 760ms ease-out both;
+}
+
+.auth-field-check svg {
+  animation: auth-field-check-draw 420ms ease 90ms both;
+}
+
 .password-label-row { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; }
 .password-label-row .field-label { margin: 0 0 9px; }
 .password-label-row .text-link { min-height: auto; margin-bottom: 8px; border: 0; font-size: .58rem; }
@@ -2150,8 +2200,8 @@ select {
 
 .login-success-card {
   display: flex;
-  width: min(100%, 310px);
-  min-height: 250px;
+  width: min(100%, 350px);
+  min-height: 285px;
   align-items: center;
   justify-content: center;
   flex-direction: column;
@@ -2168,8 +2218,8 @@ select {
 .login-success-check {
   position: relative;
   display: grid;
-  width: 92px;
-  height: 92px;
+  width: 116px;
+  height: 116px;
   place-items: center;
   border-radius: 50%;
   background: linear-gradient(135deg, #70a66f, #3f7b48);
@@ -2213,6 +2263,43 @@ select {
   font-weight: 700;
   letter-spacing: .08em;
   text-transform: uppercase;
+}
+
+@keyframes auth-field-check-pop {
+  0% {
+    opacity: 0;
+    transform: translateY(-50%) scale(.42);
+  }
+  62% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1.14);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(-50%) scale(1);
+  }
+}
+
+@keyframes auth-field-check-ripple {
+  from {
+    opacity: .82;
+    transform: scale(.72);
+  }
+  to {
+    opacity: 0;
+    transform: scale(1.45);
+  }
+}
+
+@keyframes auth-field-check-draw {
+  from {
+    opacity: 0;
+    transform: scale(.56) rotate(-10deg);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) rotate(0);
+  }
 }
 
 @keyframes login-success-backdrop {
