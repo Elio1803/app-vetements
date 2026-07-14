@@ -126,7 +126,7 @@ button:disabled {
   left: var(--left);
   color: #714c3e;
   animation: loading-fall var(--duration) cubic-bezier(.32,.1,.28,1) var(--delay) both;
-  filter: drop-shadow(0 18px 30px rgba(87, 60, 45, .2));
+  filter: drop-shadow(0 24px 42px rgba(87, 60, 45, .24));
   transform-origin: center;
 }
 
@@ -141,6 +141,7 @@ button:disabled {
 
 .loading-brand {
   position: relative;
+  z-index: 2;
   display: flex;
   align-items: center;
   flex-direction: column;
@@ -176,15 +177,15 @@ button:disabled {
 @keyframes loading-fall {
   0% {
     opacity: 0;
-    transform: translate3d(-50%, -26vh, 0) rotate(var(--rotate-start)) scale(.76);
+    transform: translate3d(-50%, -34vh, 0) rotate(var(--rotate-start)) scale(.72);
   }
   12% { opacity: 1; }
   50% {
-    transform: translate3d(calc(-50% + var(--drift)), 52vh, 0) rotate(calc(var(--rotate-start) * .3)) scale(1.12);
+    transform: translate3d(calc(-50% + var(--drift)), 50vh, 0) rotate(calc(var(--rotate-start) * .3)) scale(1.16);
   }
   100% {
-    opacity: .9;
-    transform: translate3d(-50%, 124vh, 0) rotate(var(--rotate-end)) scale(1.03);
+    opacity: .84;
+    transform: translate3d(-50%, 130vh, 0) rotate(var(--rotate-end)) scale(1.06);
   }
 }
 
