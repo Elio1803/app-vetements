@@ -66,4 +66,20 @@ describe("generateLocalOutfits", () => {
       });
     }
   });
+
+  it("prioritizes a warm layer during winter", () => {
+    const now = new Date("2026-01-11T12:00:00.000Z");
+    const items = [
+      item("top-1", "haut", 5),
+      item("bottom-1", "bas", 4),
+      item("shoes-1", "chaussures", 3),
+      item("coat-1", "veste_manteau", 2),
+    ];
+
+    const suggestions = generateLocalOutfits(items, "quotidien", "", now);
+
+    expect(suggestions.length).toBeGreaterThan(0);
+    expect(suggestions.every((suggestion) => suggestion.itemIds.includes("coat-1"))).toBe(true);
+    expect(suggestions[0].reason).toContain("hiver");
+  });
 });

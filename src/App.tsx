@@ -40,6 +40,7 @@ import { LoadingScreen } from './components/LoadingScreen'
 import { OutfitBoard } from './components/OutfitBoard'
 import { Sheet } from './components/Sheet'
 import { daysSince, formatLastWorn } from './lib/dates'
+import { wardrobeSeasonForDate, wardrobeSeasonLabel } from './lib/outfit-engine'
 import {
   createLocalAccount,
   getLocalSession,
@@ -231,6 +232,53 @@ function isLikelyNetworkError(error: unknown) {
   if (!error) return false
   const message = error instanceof Error ? error.message : String(error)
   return /network|fetch|offline|connexion|failed|timeout|load failed/i.test(message)
+}
+
+function generationReadinessFor(
+  items: readonly ClothingItem[],
+  occasion: Occasion,
+  now: Date,
+) {
+  const hasDress = items.some((item) => item.category === 'robe')
+  const hasSeparates = items.some((item) => item.category === 'haut') && items.some((item) => item.category === 'bas')
+  const hasShoes = items.some((item) => item.category === 'chaussures')
+  const hasWarmLayer = items.some((item) => item.category === 'veste_manteau')
+  const season = wardrobeSeasonForDate(now)
+  const readableSeason = wardrobeSeasonLabel(season)
+  const formalOccasion = occasion === 'travail' || occasion === 'soiree' || occasion === 'rendez_vous' || occasion === 'habille'
+  const coldSeason = season === 'automne' || season === 'hiver'
+
+  if (!hasDress && !hasSeparates) {
+    return {
+      canGenerate: false,
+      message: 'Ajoutez au moins un haut et un bas, ou une robe, pour générer une tenue complète.',
+      season,
+    }
+  }
+
+  if (formalOccasion && !hasShoes) {
+    return {
+      canGenerate: false,
+      message: 'Pour une occasion habillée, ajoutez au moins une paire de chaussures afin de proposer une tenue complète.',
+      season,
+    }
+  }
+
+  if (coldSeason && occasion !== 'sport' && !hasWarmLayer) {
+    return {
+      canGenerate: false,
+      message: `En ${readableSeason}, ajoutez une veste ou un manteau pour générer une tenue vraiment adaptée à la saison.`,
+      season,
+    }
+  }
+
+  return {
+    canGenerate: true,
+    message: coldSeason
+      ? `Suggestions adaptées à l’${readableSeason} : les couches chaudes seront privilégiées.`
+      : `Suggestions adaptées à la saison ${readableSeason}.`,
+    season,
+  }
 }
 
 interface LoginScreenProps {
@@ -522,10 +570,11 @@ function App() {
     .slice(0, 2)
     .toLocaleUpperCase('fr') || 'EP'
   const selectedItem = state.items.find((item) => item.id === selectedItemId) ?? null
-  const canGenerate = state.items.some((item) => item.category === 'robe') || (
-    state.items.some((item) => item.category === 'haut') &&
-    state.items.some((item) => item.category === 'bas')
+  const generationReadiness = useMemo(
+    () => generationReadinessFor(state.items, occasion, today),
+    [occasion, state.items, today],
   )
+  const canGenerate = generationReadiness.canGenerate
 
   const visibleItems = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('fr')
@@ -1137,7 +1186,13 @@ function App() {
                 {!canGenerate && (
                   <div className="inline-alert" role="alert">
                     <Shirt size={18} />
-                    <p>Ajoutez au moins un haut et un bas, ou une robe, pour générer une tenue.</p>
+                    <p>{generationReadiness.message}</p>
+                  </div>
+                )}
+                {canGenerate && (
+                  <div className="inline-alert inline-alert--season" role="status">
+                    <Sparkles size={18} />
+                    <p>{generationReadiness.message}</p>
                   </div>
                 )}
 

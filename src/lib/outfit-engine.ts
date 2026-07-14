@@ -17,6 +17,41 @@ const OUTFIT_NAMES: Record<Occasion, string[]> = {
 };
 
 const FORMAL_OCCASIONS: Occasion[] = ["travail", "soiree", "rendez_vous", "habille"];
+type WardrobeSeason = "printemps" | "ete" | "automne" | "hiver";
+
+const COLD_SEASONS: WardrobeSeason[] = ["automne", "hiver"];
+
+export function wardrobeSeasonLabel(season: WardrobeSeason): string {
+  return season === "ete" ? "été" : season;
+}
+
+export function wardrobeSeasonForDate(date: Date): WardrobeSeason {
+  const month = date.getMonth();
+  if (month >= 2 && month <= 4) return "printemps";
+  if (month >= 5 && month <= 7) return "ete";
+  if (month >= 8 && month <= 10) return "automne";
+  return "hiver";
+}
+
+function itemSeasonScore(item: ClothingItem, season: WardrobeSeason, occasion: Occasion): number {
+  const text = `${item.name ?? ""} ${item.colorDominant ?? ""}`.toLocaleLowerCase("fr");
+  let score = 0;
+
+  if (item.category === "veste_manteau") score += COLD_SEASONS.includes(season) ? 7 : -2;
+  if (item.category === "accessoire") score += COLD_SEASONS.includes(season) || FORMAL_OCCASIONS.includes(occasion) ? 2 : 0;
+  if (item.category === "robe") score += season === "ete" || FORMAL_OCCASIONS.includes(occasion) ? 3 : season === "hiver" ? -2 : 0;
+
+  if (/manteau|doudoune|laine|pull|col roulé|col roule|sweat|cardigan|veste|bottes|écharpe|echarpe/i.test(text)) {
+    score += COLD_SEASONS.includes(season) ? 5 : -2;
+  }
+  if (/short|débardeur|debardeur|lin|sandale|t-shirt|tee-shirt|jupe|robe légère|robe legere/i.test(text)) {
+    score += season === "ete" ? 5 : season === "hiver" ? -4 : 0;
+  }
+  if (/noir|marine|gris|marron|bordeaux|beige/i.test(text)) score += COLD_SEASONS.includes(season) ? 1 : 0;
+  if (/blanc|crème|creme|pastel|rose|bleu clair/i.test(text)) score += season === "printemps" || season === "ete" ? 1 : 0;
+
+  return score;
+}
 
 function hashText(value: string): number {
   let hash = 2166136261;
@@ -48,6 +83,7 @@ function describeReason(
   note: string,
   now: Date,
 ): string {
+  const season = wardrobeSeasonForDate(now);
   const forgotten = sortByLeastRecentlyWorn(selected, now)[0];
   const elapsed = forgotten ? daysSince(forgotten.lastWornAt, now) : null;
   const piece = forgotten?.name ?? "une pièce oubliée";
@@ -57,15 +93,22 @@ function describeReason(
       : `La pièce « ${piece} » revient dans la rotation après ${elapsed} jours`;
   const context = note.trim() ? `, tout en tenant compte de « ${note.trim()} »` : "";
   const finish = occasion === "sport" ? "mobile et facile à superposer" : "cohérente et facile à porter";
-  return `${rotation}${context} : la tenue reste ${finish}.`;
+  const readableSeason = wardrobeSeasonLabel(season);
+  const seasonDetail = COLD_SEASONS.includes(season)
+    ? ` avec une attention aux couches adaptées à l’${readableSeason}`
+    : ` avec une silhouette adaptée à la saison ${readableSeason}`;
+  return `${rotation}${context} : la tenue reste ${finish}${seasonDetail}.`;
 }
 
-function rankedPools(items: readonly ClothingItem[], now: Date) {
+function rankedPools(items: readonly ClothingItem[], occasion: Occasion, now: Date) {
+  const season = wardrobeSeasonForDate(now);
   const grouped = groupItemsByCategory(items);
   return Object.fromEntries(
     Object.entries(grouped).map(([category, values]) => [
       category,
-      sortByLeastRecentlyWorn(values, now),
+      sortByLeastRecentlyWorn(values, now).sort((a, b) => (
+        itemSeasonScore(b, season, occasion) - itemSeasonScore(a, season, occasion)
+      )),
     ]),
   ) as Record<ClothingCategory, ClothingItem[]>;
 }
@@ -83,20 +126,26 @@ export function generateLocalOutfits(
 ): OutfitSuggestion[] {
   if (!items.length) return [];
 
-  const pool = rankedPools(items, now);
+  const pool = rankedPools(items, occasion, now);
+  const season = wardrobeSeasonForDate(now);
   const dayKey = now.toISOString().slice(0, 10);
   const seed = hashText(`${occasion}|${note.trim().toLocaleLowerCase("fr")}|${dayKey}`);
   const suggestions: OutfitSuggestion[] = [];
   const signatures = new Set<string>();
   const isFormal = FORMAL_OCCASIONS.includes(occasion);
-  const feelsCold = /froid|frai|pluie|vent|hiver|manteau|veste/i.test(note);
+  const feelsCold = COLD_SEASONS.includes(season) || /froid|frai|pluie|vent|hiver|manteau|veste/i.test(note);
+  const feelsWarm = season === "ete" || /chaud|soleil|été|ete|canicule|léger|leger/i.test(note);
 
   for (let attempt = 0; attempt < 18 && suggestions.length < 3; attempt += 1) {
     const variant = suggestions.length;
     const offset = seed + attempt;
     const selected: ClothingItem[] = [];
     const canUseDress = occasion !== "sport" && pool.robe.length > 0;
-    const useDress = canUseDress && (attempt % 3 === 2 || (isFormal && attempt % 4 === 0));
+    const useDress = canUseDress && (
+      (feelsWarm && attempt % 2 === 0) ||
+      attempt % 3 === 2 ||
+      (isFormal && attempt % 4 === 0)
+    );
 
     if (useDress) {
       addUnique(selected, itemAt(pool.robe, offset));

@@ -1364,6 +1364,12 @@ select {
   line-height: 1.5;
 }
 
+.inline-alert--season {
+  border-color: rgba(108, 112, 95, .24);
+  background: rgba(236, 240, 231, .72);
+  color: var(--sage);
+}
+
 .generate-button {
   display: flex;
   width: 100%;
@@ -2628,6 +2634,11 @@ select {
   .upload-status--offline {
     border-color: rgba(240, 164, 155, .28);
     background: rgba(70, 36, 34, .72);
+  }
+
+  .inline-alert--season {
+    border-color: rgba(169, 176, 143, .24);
+    background: rgba(36, 42, 35, .72);
   }
 
   .occasion-grid label,
