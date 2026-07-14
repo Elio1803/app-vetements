@@ -13,23 +13,21 @@ interface IconProps {
   color?: string
 }
 
-const PALETTE = ['#E8C9A0', '#C98A9B', '#B8A6D9', '#F3ECDD', '#D8B4A0']
 const ITEM_TYPES = ['shirt', 'hanger', 'pants'] as const
 
-const FALLING_ITEMS = Array.from({ length: 9 }).map((_, index) => {
+const FALLING_ITEMS = Array.from({ length: 10 }).map((_, index) => {
   const type = ITEM_TYPES[index % ITEM_TYPES.length]
   const left = 8 + ((index * 10.5) % 84)
-  const size = 22 + ((index * 7) % 20)
+  const size = 38 + ((index * 9) % 30)
   const delay = (index % 5) * 0.14
-  const duration = 1.7 + ((index * 13) % 6) / 10
-  const drift = (index % 2 === 0 ? 1 : -1) * (18 + (index % 4) * 6)
+  const duration = 1.95 + ((index * 13) % 6) / 10
+  const drift = (index % 2 === 0 ? 1 : -1) * (26 + (index % 4) * 8)
   const rotateStart = (index % 2 === 0 ? -1 : 1) * (15 + (index % 3) * 10)
   const rotateEnd = (index % 2 === 0 ? 1 : -1) * (25 + (index % 4) * 8)
-  const color = PALETTE[index % PALETTE.length]
-  return { id: index, type, left, size, delay, duration, drift, rotateStart, rotateEnd, color }
+  return { id: index, type, left, size, delay, duration, drift, rotateStart, rotateEnd }
 })
 
-function HangerIcon({ size = 28, color = '#E8C9A0' }: IconProps) {
+function HangerIcon({ size = 28, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -44,7 +42,7 @@ function HangerIcon({ size = 28, color = '#E8C9A0' }: IconProps) {
   )
 }
 
-function PantsIcon({ size = 28, color = '#C98A9B' }: IconProps) {
+function PantsIcon({ size = 28, color = 'currentColor' }: IconProps) {
   return (
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
       <path
@@ -94,12 +92,12 @@ export function LoadingScreen({ brand = 'Le Dressing', onFinish, persistent = fa
             '--rotate-start': `${item.rotateStart}deg`,
           } as CSSProperties}
         >
-          {renderItem(item.type, item.size, item.color)}
+          {renderItem(item.type, item.size, 'currentColor')}
         </span>
       ))}
 
       <div className="loading-brand">
-        <span className="loading-hanger"><HangerIcon size={34} color="#F3ECDD" /></span>
+        <span className="loading-hanger"><HangerIcon size={48} /></span>
         <strong>{brand}</strong>
         <small>Préparation de votre dressing</small>
       </div>
