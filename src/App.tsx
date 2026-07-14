@@ -227,6 +227,12 @@ function formatToday(date: Date) {
   return `${formatted.charAt(0).toLocaleUpperCase('fr')}${formatted.slice(1)}`
 }
 
+function isLikelyNetworkError(error: unknown) {
+  if (!error) return false
+  const message = error instanceof Error ? error.message : String(error)
+  return /network|fetch|offline|connexion|failed|timeout|load failed/i.test(message)
+}
+
 interface LoginScreenProps {
   onLogin: (email: string, password: string, createAccount: boolean) => Promise<string | null>
   onGoogle: () => Promise<string | null>
@@ -396,6 +402,7 @@ function App() {
   const [wearCandidate, setWearCandidate] = useState<OutfitSuggestion | null>(null)
   const [toast, setToast] = useState('')
   const [appEntering, setAppEntering] = useState(false)
+  const [isOnline, setIsOnline] = useState(() => navigator.onLine)
   const [today, setToday] = useState(() => new Date())
   const [canInstall, setCanInstall] = useState(false)
   const [isInstalled, setIsInstalled] = useState(() => {
@@ -459,6 +466,16 @@ function App() {
       window.clearInterval(interval)
       window.removeEventListener('focus', refreshDate)
       document.removeEventListener('visibilitychange', refreshDate)
+    }
+  }, [])
+
+  useEffect(() => {
+    const updateOnlineState = () => setIsOnline(navigator.onLine)
+    window.addEventListener('online', updateOnlineState)
+    window.addEventListener('offline', updateOnlineState)
+    return () => {
+      window.removeEventListener('online', updateOnlineState)
+      window.removeEventListener('offline', updateOnlineState)
     }
   }, [])
 
@@ -588,6 +605,11 @@ function App() {
   const handlePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
+    if (!isOnline && supabase && currentUserId) {
+      setAddError('Vous êtes hors ligne. Reconnectez-vous avant d’importer une photo dans votre dressing.')
+      event.target.value = ''
+      return
+    }
     setPhotoBusy(true)
     setAddError('')
     try {
@@ -612,7 +634,11 @@ function App() {
 
       setPhotoData(preparedPhoto)
     } catch (error) {
-      setAddError(error instanceof Error ? error.message : 'Impossible de lire cette photo.')
+      setAddError(
+        isLikelyNetworkError(error)
+          ? 'La connexion semble instable. Vérifiez votre réseau puis réessayez.'
+          : error instanceof Error ? error.message : 'Impossible de lire cette photo.',
+      )
     } finally {
       setPhotoBusy(false)
       event.target.value = ''
@@ -647,6 +673,10 @@ function App() {
   const saveItem = async () => {
     if (!photoData) {
       setAddError('Ajoute une photo avant de continuer.')
+      return
+    }
+    if (!isOnline && supabase && currentUserId) {
+      setAddError('Vous êtes hors ligne. Votre photo est prête, mais l’envoi nécessite une connexion internet.')
       return
     }
     setSavingItem(true)
@@ -701,11 +731,15 @@ function App() {
         resetAdd()
         showToast('Pièce ajoutée à votre dressing.')
       }
-    } catch {
+    } catch (error) {
       if (uploadedPath && supabase) {
         await supabase.storage.from('clothing-photos').remove([uploadedPath])
       }
-      setAddError('Impossible d’ajouter cette pièce. Vos informations ont été conservées.')
+      setAddError(
+        isLikelyNetworkError(error)
+          ? 'Erreur réseau pendant l’envoi. Votre photo est conservée ici : réessayez quand la connexion est stable.'
+          : 'Impossible d’ajouter cette pièce. Vos informations ont été conservées.',
+      )
     } finally {
       setSavingItem(false)
     }
@@ -1252,6 +1286,24 @@ function App() {
         </fieldset>
 
         <div className="photo-advice"><Camera size={17} /><p>Choisissez la catégorie avant la photo : l’app cible cette zone et évite de garder toute la tenue.</p></div>
+        {!isOnline && (
+          <div className="upload-status upload-status--offline" role="status">
+            <Zap size={16} />
+            <p>Mode hors ligne : l’envoi cloud est mis en pause. Reconnectez-vous pour ajouter la pièce.</p>
+          </div>
+        )}
+        {photoBusy && (
+          <div className="upload-status" role="status" aria-live="polite">
+            <RefreshCw size={16} className="spin-icon" />
+            <p>Préparation de la photo en cours. Gardez l’application ouverte.</p>
+          </div>
+        )}
+        {savingItem && (
+          <div className="upload-status" role="status" aria-live="polite">
+            <Upload size={16} className="pulse-icon" />
+            <p>Envoi sécurisé de la photo et analyse de la pièce…</p>
+          </div>
+        )}
         {photoData ? (
           <div className="photo-preview">
             <img src={photoData} alt="Aperçu de la pièce à ajouter" />
