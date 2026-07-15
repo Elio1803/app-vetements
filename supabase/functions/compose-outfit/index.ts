@@ -237,7 +237,7 @@ async function callFalTryOn(
       garment_image: garmentImage,
       category: falCategory(item.category),
       prompt:
-        "Professional e-commerce fashion try-on on a realistic store mannequin, neutral elegant posture, clean studio lighting, natural fabric fit, no distortion, preserve garment colors and details.",
+        "Create a clean fashion flat lay composition on a pure white background. Reconstruct the garment as a complete, clearly visible piece when the source photo is cropped or partial, while preserving its real colors, fabric texture, seams, logos and key details. Use a polished soft cartoon / editorial illustration style, similar to a premium Pinterest outfit board or fashion e-commerce collage. No human model, no mannequin, no body parts, no messy shadows, no distorted clothing. Arrange the pieces beautifully with enough spacing so every garment is easy to understand.",
     }),
   });
 
