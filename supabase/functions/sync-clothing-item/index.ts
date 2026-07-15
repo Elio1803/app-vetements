@@ -44,17 +44,30 @@ function categoryFromForm(formData: FormData): ClothingCategory {
 
 async function ensurePublicUser(userId: string, email: string | null): Promise<void> {
   const client = adminClient();
-  const { error } = await client
+
+  const { error: upsertError } = await client
     .from("users")
     .upsert({
       id: userId,
-      email,
-      created_at: new Date().toISOString(),
+      email: null,
     }, { onConflict: "id" });
 
-  if (error) {
-    console.error("Unable to ensure public user:", error.code);
+  if (upsertError) {
+    console.error("Unable to ensure public user:", upsertError.code, upsertError.message);
     throw new HttpError(500, "USER_SYNC_FAILED", "Unable to prepare user profile.");
+  }
+
+  if (email) {
+    const { error: emailError } = await client
+      .from("users")
+      .update({ email })
+      .eq("id", userId);
+
+    // The e-mail is useful for display/welcome flows, but it must never block
+    // wardrobe sync. A stale duplicate e-mail row can exist after auth tests.
+    if (emailError) {
+      console.warn("Unable to update public user email:", emailError.code, emailError.message);
+    }
   }
 }
 
