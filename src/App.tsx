@@ -57,6 +57,11 @@ import {
 import { useWardrobeStore } from './lib/use-wardrobe-store'
 import { wardrobeStore } from './lib/wardrobe-store'
 import { wardrobeApi } from './lib/wardrobe-api'
+import {
+  normalizeWardrobeState,
+  WARDROBE_STORAGE_KEY,
+  wardrobeStorageKeyForAccount,
+} from './lib/storage'
 import { createProductPhoto, defaultFocusForCategory, focusPhotoOnCategory, type GarmentFocus } from './lib/product-photo'
 import {
   createRemoveBgProductPhoto,
@@ -236,6 +241,50 @@ function isLikelyNetworkError(error: unknown) {
 
 function isLocalPhotoUrl(value: string) {
   return /^data:image\//i.test(value)
+}
+
+function recoverLocalWardrobeItems(targetUserId: string): ClothingItem[] {
+  if (typeof window === 'undefined') return []
+  const recovered = new Map<string, ClothingItem>()
+  const fallback = {
+    version: 1 as const,
+    userId: targetUserId,
+    items: [] as ClothingItem[],
+    outfits: [],
+    suggestions: [],
+    selectedOccasion: 'quotidien' as Occasion,
+    lastUpdatedAt: new Date().toISOString(),
+  }
+
+  try {
+    const keys: string[] = []
+    for (let index = 0; index < window.localStorage.length; index += 1) {
+      const key = window.localStorage.key(index)
+      if (key?.startsWith(WARDROBE_STORAGE_KEY)) keys.push(key)
+    }
+
+    for (const key of keys) {
+      const raw = window.localStorage.getItem(key)
+      if (!raw) continue
+      const state = normalizeWardrobeState(JSON.parse(raw) as unknown, fallback)
+      for (const item of state.items) {
+        if (!isLocalPhotoUrl(item.photoUrl)) continue
+        recovered.set(item.id, { ...item, userId: targetUserId })
+      }
+    }
+
+    const currentRaw = window.localStorage.getItem(wardrobeStorageKeyForAccount(targetUserId))
+    if (currentRaw) {
+      const state = normalizeWardrobeState(JSON.parse(currentRaw) as unknown, fallback)
+      for (const item of state.items) {
+        if (isLocalPhotoUrl(item.photoUrl)) recovered.set(item.id, { ...item, userId: targetUserId })
+      }
+    }
+  } catch (error) {
+    console.warn('Unable to recover local wardrobe items:', error)
+  }
+
+  return [...recovered.values()]
 }
 
 function generationReadinessFor(
@@ -482,8 +531,9 @@ function App() {
           isLocalPhotoUrl(item.photoUrl)
         )
         if (userId) {
+          const recoveredItems = recoverLocalWardrobeItems(userId)
           wardrobeStore.switchToAccount(userId)
-          for (const item of unsyncedItems) {
+          for (const item of [...unsyncedItems, ...recoveredItems]) {
             if (!wardrobeStore.getSnapshot().items.some((candidate) => candidate.id === item.id)) {
               wardrobeStore.addItem({ ...item, userId })
             }
@@ -503,10 +553,11 @@ function App() {
           const pendingLocalItems = wardrobeStore.getSnapshot().items.filter((item) =>
             isLocalPhotoUrl(item.photoUrl)
           )
+          const recoveredItems = recoverLocalWardrobeItems(data.user.id)
           const paths = await loadRemoteWardrobe(data.user)
           if (active) storagePaths.current = paths
-          if (active && pendingLocalItems.length) {
-            for (const item of pendingLocalItems) {
+          if (active && (pendingLocalItems.length || recoveredItems.length)) {
+            for (const item of [...pendingLocalItems, ...recoveredItems]) {
               if (!wardrobeStore.getSnapshot().items.some((candidate) => candidate.id === item.id)) {
                 wardrobeStore.addItem({ ...item, userId: data.user.id })
               }
@@ -622,12 +673,13 @@ function App() {
         const pendingLocalItems = wardrobeStore.getSnapshot().items.filter((item) =>
           isLocalPhotoUrl(item.photoUrl)
         )
+        const recoveredItems = recoverLocalWardrobeItems(currentUserId)
         const { data } = await supabaseClient.auth.getUser()
         if (cancelled || !data.user || data.user.id !== currentUserId) return
         const paths = await loadRemoteWardrobe(data.user)
         if (cancelled) return
         storagePaths.current = paths
-        for (const item of pendingLocalItems) {
+        for (const item of [...pendingLocalItems, ...recoveredItems]) {
           if (!wardrobeStore.getSnapshot().items.some((candidate) => candidate.id === item.id)) {
             wardrobeStore.addItem({ ...item, userId: currentUserId })
           }
