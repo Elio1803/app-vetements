@@ -654,17 +654,12 @@ function App() {
   const handlePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]
     if (!file) return
-    if (!isOnline && supabase && currentUserId) {
-      setAddError('Vous êtes hors ligne. Reconnectez-vous avant d’importer une photo dans votre dressing.')
-      event.target.value = ''
-      return
-    }
     setPhotoBusy(true)
     setAddError('')
     try {
       const focusedFile = await focusPhotoOnCategory(file, addFocus)
       let preparedPhoto = ''
-      if (supabase && currentUserId) {
+      if (isOnline && supabase && currentUserId) {
         try {
           preparedPhoto = await createRemoveBgProductPhoto(focusedFile)
         } catch {
@@ -682,6 +677,9 @@ function App() {
       }
 
       setPhotoData(preparedPhoto)
+      if (!isOnline && supabase && currentUserId) {
+        showToast('Photo préparée hors ligne. Elle sera ajoutée localement.')
+      }
     } catch (error) {
       setAddError(
         isLikelyNetworkError(error)
@@ -724,14 +722,28 @@ function App() {
       setAddError('Ajoute une photo avant de continuer.')
       return
     }
-    if (!isOnline && supabase && currentUserId) {
-      setAddError('Vous êtes hors ligne. Votre photo est prête, mais l’envoi nécessite une connexion internet.')
-      return
+
+    const addLocalFallbackItem = () => {
+      wardrobeStore.addItem({
+        photoUrl: photoData,
+        category: addCategory,
+        name: addName.trim() || `${CATEGORY_LABELS_SINGULAR[addCategory]} sans nom`,
+        colorDominant: null,
+      })
+      setAddOpen(false)
+      resetAdd()
     }
+
     setSavingItem(true)
     setAddError('')
     let uploadedPath: string | null = null
     try {
+      if (!isOnline && supabase && currentUserId) {
+        addLocalFallbackItem()
+        showToast('Pièce ajoutée en mode hors ligne. Elle reste sur cet appareil.')
+        return
+      }
+
       if (supabase && currentUserId) {
         uploadedPath = await uploadClothingPhoto(photoData, currentUserId)
         const created = await wardrobeApi.createItem({
@@ -784,10 +796,11 @@ function App() {
       if (uploadedPath && supabase) {
         await supabase.storage.from('clothing-photos').remove([uploadedPath])
       }
-      setAddError(
+      addLocalFallbackItem()
+      showToast(
         isLikelyNetworkError(error)
-          ? 'Erreur réseau pendant l’envoi. Votre photo est conservée ici : réessayez quand la connexion est stable.'
-          : 'Impossible d’ajouter cette pièce. Vos informations ont été conservées.',
+          ? 'Pièce ajoutée en secours local. La connexion cloud était instable.'
+          : 'Pièce ajoutée en secours local. La synchro cloud pourra être retentée plus tard.',
       )
     } finally {
       setSavingItem(false)
@@ -1344,7 +1357,7 @@ function App() {
         {!isOnline && (
           <div className="upload-status upload-status--offline" role="status">
             <Zap size={16} />
-            <p>Mode hors ligne : l’envoi cloud est mis en pause. Reconnectez-vous pour ajouter la pièce.</p>
+            <p>Mode hors ligne : la pièce peut être ajoutée sur cet appareil, la synchro cloud attendra le retour du réseau.</p>
           </div>
         )}
         {photoBusy && (
