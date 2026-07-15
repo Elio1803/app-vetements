@@ -51,7 +51,26 @@ export async function withSignedPhotoUrls(items: ClothingItem[]) {
 }
 
 export async function loadRemoteWardrobe(user: User) {
-  const items = await wardrobeApi.listItems(user.id)
+  if (!supabase) throw new Error('Supabase n’est pas configuré.')
+
+  const invoke = () => supabase.functions.invoke<{ items: unknown[] }>('list-clothing-items', {
+    body: {},
+  })
+  let result = await invoke()
+
+  if (result.error) {
+    const { data: refreshed } = await supabase.auth.refreshSession()
+    if (refreshed.session) result = await invoke()
+  }
+
+  if (result.error) throw result.error
+  if (!Array.isArray(result.data?.items)) {
+    throw new Error('Réponse du dressing en ligne invalide.')
+  }
+
+  const items = result.data.items
+    .map((item) => normalizeClothingItem(item, user.id))
+    .filter((item): item is ClothingItem => Boolean(item))
   const resolved = await withSignedPhotoUrls(items)
   wardrobeStore.replaceItems(resolved.items)
   return resolved.storagePaths

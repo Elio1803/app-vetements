@@ -715,7 +715,7 @@ function App() {
         } catch {
           wardrobeStore.updateItem(created.id, { photoUrl: item.photoUrl })
         }
-        wardrobeStore.removeItem(item.id)
+        if (created.id !== item.id) wardrobeStore.removeItem(item.id)
         syncedCount += 1
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error)
