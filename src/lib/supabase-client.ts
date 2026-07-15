@@ -74,6 +74,7 @@ export async function uploadClothingPhoto(dataUrl: string, userId: string) {
 export async function syncClothingItemToCloud(input: {
   dataUrl: string
   userId: string
+  clientItemId?: string | null
   category: ClothingCategory
   name?: string | null
   colorDominant?: string | null
@@ -84,6 +85,7 @@ export async function syncClothingItemToCloud(input: {
   const formData = new FormData()
   formData.append('image', blob, 'vetement.jpg')
   formData.append('category', input.category)
+  if (input.clientItemId?.trim()) formData.append('clientItemId', input.clientItemId.trim())
   if (input.name?.trim()) formData.append('name', input.name.trim())
   if (input.colorDominant?.trim()) formData.append('colorDominant', input.colorDominant.trim())
 

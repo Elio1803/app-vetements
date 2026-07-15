@@ -42,6 +42,16 @@ function categoryFromForm(formData: FormData): ClothingCategory {
   return value;
 }
 
+function optionalUuid(value: FormDataEntryValue | null): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized) return null;
+  if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized)) {
+    return null;
+  }
+  return normalized;
+}
+
 async function ensurePublicUser(userId: string, email: string | null): Promise<void> {
   const client = adminClient();
 
@@ -121,11 +131,34 @@ export default {
       const formData = await request.formData();
       const image = await imageFromForm(formData);
       const category = categoryFromForm(formData);
+      const clientItemId = optionalUuid(formData.get("clientItemId"));
       const name = optionalText(formData.get("name"), 160);
       const colorDominant = optionalText(formData.get("colorDominant"), 80);
       const client = adminClient();
 
       await ensurePublicUser(user.id, user.email ?? null);
+
+      if (clientItemId) {
+        const { data: existingItem, error: existingError } = await client
+          .from("clothing_items")
+          .select("id, user_id, photo_url, category, color_dominant, name, created_at, last_worn_at, wear_count")
+          .eq("id", clientItemId)
+          .eq("user_id", user.id)
+          .maybeSingle();
+
+        if (existingError) {
+          console.error("Unable to check existing clothing item:", existingError.code);
+          throw new HttpError(500, "ITEM_LOOKUP_FAILED", "Unable to check existing clothing item.");
+        }
+
+        if (existingItem) {
+          return jsonResponse(request, 200, {
+            item: existingItem,
+            photoPath: existingItem.photo_url,
+            alreadySynced: true,
+          });
+        }
+      }
 
       const extension = image.type.includes("png")
         ? "png"
@@ -152,6 +185,7 @@ export default {
       const { data, error: insertError } = await client
         .from("clothing_items")
         .insert({
+          ...(clientItemId ? { id: clientItemId } : {}),
           user_id: user.id,
           photo_url: uploadedPath,
           category,

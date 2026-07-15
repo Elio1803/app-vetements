@@ -520,6 +520,7 @@ function App() {
   const activeUser = useRef<string | null>(null)
   const initialEntryPlayed = useRef(false)
   const syncingLocalItems = useRef(new Set<string>())
+  const syncLocalItemsRunning = useRef(false)
 
   useEffect(() => {
     if (!supabase) return
@@ -615,6 +616,7 @@ function App() {
   }, [appEntering])
 
   const syncLocalItemsNow = async (manual = false) => {
+    if (syncLocalItemsRunning.current) return
     if (!supabase || !currentUserId || !isOnline || !authenticated) {
       if (manual) {
         setSyncError('Connectez-vous au compte et vérifiez Internet avant de synchroniser.')
@@ -634,6 +636,7 @@ function App() {
     }
 
     if (manual) setManualSyncing(true)
+    syncLocalItemsRunning.current = true
     setSyncError('')
     let syncedCount = 0
     for (const item of pendingItems) {
@@ -642,6 +645,7 @@ function App() {
         const synced = await syncClothingItemToCloud({
           dataUrl: item.photoUrl,
           userId: currentUserId,
+          clientItemId: item.id,
           category: item.category,
           name: item.name,
           colorDominant: item.colorDominant,
@@ -680,6 +684,7 @@ function App() {
     } else if (manual) {
       setToast('La synchronisation a échoué. Ouvrez le profil pour voir le détail.')
     }
+    syncLocalItemsRunning.current = false
     if (manual) setManualSyncing(false)
   }
 
@@ -699,13 +704,12 @@ function App() {
         const pendingLocalItems = wardrobeStore.getSnapshot().items.filter((item) =>
           isLocalPhotoUrl(item.photoUrl)
         )
-        const recoveredItems = recoverLocalWardrobeItems(currentUserId)
         const { data } = await supabaseClient.auth.getUser()
         if (cancelled || !data.user || data.user.id !== currentUserId) return
         const paths = await loadRemoteWardrobe(data.user)
         if (cancelled) return
         storagePaths.current = paths
-        for (const item of [...pendingLocalItems, ...recoveredItems]) {
+        for (const item of pendingLocalItems) {
           if (!wardrobeStore.getSnapshot().items.some((candidate) => candidate.id === item.id)) {
             wardrobeStore.addItem({ ...item, userId: currentUserId })
           }
@@ -953,6 +957,7 @@ function App() {
         const synced = await syncClothingItemToCloud({
           dataUrl: photoData,
           userId: currentUserId,
+          clientItemId: null,
           category: addCategory,
           name: addName.trim() || null,
           colorDominant: null,

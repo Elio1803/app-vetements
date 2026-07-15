@@ -126,6 +126,13 @@ export class WardrobeStore {
       this.state.userId,
     );
     if (!candidate) throw new Error("La pièce doit avoir une photo et une catégorie valides.");
+    if (this.state.items.some((item) => item.id === candidate.id)) {
+      this.commit({
+        ...this.state,
+        items: this.state.items.map((item) => (item.id === candidate.id ? candidate : item)),
+      });
+      return candidate;
+    }
     this.commit({ ...this.state, items: [candidate, ...this.state.items] });
     return candidate;
   }
@@ -219,7 +226,8 @@ export class WardrobeStore {
     const normalized = items
       .map((item) => normalizeClothingItem(item, this.state.userId))
       .filter((item): item is ClothingItem => Boolean(item));
-    this.commit({ ...this.state, items: normalized });
+    const deduped = [...new Map(normalized.map((item) => [item.id, item])).values()];
+    this.commit({ ...this.state, items: deduped });
   }
 
   getStats(now = new Date()): WardrobeStats {
