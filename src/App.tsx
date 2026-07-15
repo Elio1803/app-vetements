@@ -234,6 +234,10 @@ function isLikelyNetworkError(error: unknown) {
   return /network|fetch|offline|connexion|failed|timeout|load failed/i.test(message)
 }
 
+function isLocalPhotoUrl(value: string) {
+  return /^data:image\//i.test(value)
+}
+
 function generationReadinessFor(
   items: readonly ClothingItem[],
   occasion: Occasion,
@@ -463,6 +467,7 @@ function App() {
   const storagePaths = useRef(new Map<string, string>())
   const activeUser = useRef<string | null>(null)
   const initialEntryPlayed = useRef(false)
+  const syncingLocalItems = useRef(new Set<string>())
 
   useEffect(() => {
     if (!supabase) return
@@ -472,7 +477,19 @@ function App() {
     const applySession = async (userId: string | null) => {
       if (!active) return
       if (userId !== activeUser.current) {
-        wardrobeStore.clear()
+        const unsyncedItems = wardrobeStore.getSnapshot().items.filter((item) =>
+          isLocalPhotoUrl(item.photoUrl)
+        )
+        if (userId) {
+          wardrobeStore.switchToAccount(userId)
+          for (const item of unsyncedItems) {
+            if (!wardrobeStore.getSnapshot().items.some((candidate) => candidate.id === item.id)) {
+              wardrobeStore.addItem({ ...item, userId })
+            }
+          }
+        } else {
+          wardrobeStore.clear()
+        }
         storagePaths.current.clear()
         activeUser.current = userId
       }
@@ -482,8 +499,18 @@ function App() {
         const { data } = await supabaseClient.auth.getUser()
         if (active) setCurrentEmail(data.user?.email ?? null)
         if (data.user && active) {
+          const pendingLocalItems = wardrobeStore.getSnapshot().items.filter((item) =>
+            isLocalPhotoUrl(item.photoUrl)
+          )
           const paths = await loadRemoteWardrobe(data.user)
           if (active) storagePaths.current = paths
+          if (active && pendingLocalItems.length) {
+            for (const item of pendingLocalItems) {
+              if (!wardrobeStore.getSnapshot().items.some((candidate) => candidate.id === item.id)) {
+                wardrobeStore.addItem({ ...item, userId: data.user.id })
+              }
+            }
+          }
           void sendWelcomeEmail().catch(() => undefined)
         }
       }
@@ -532,6 +559,58 @@ function App() {
     const timer = window.setTimeout(() => setAppEntering(false), 1200)
     return () => window.clearTimeout(timer)
   }, [appEntering])
+
+  useEffect(() => {
+    if (!supabase || !currentUserId || !isOnline || !authenticated) return
+    const pendingItems = state.items.filter((item) =>
+      isLocalPhotoUrl(item.photoUrl) && !syncingLocalItems.current.has(item.id)
+    )
+    if (!pendingItems.length) return
+
+    for (const item of pendingItems) {
+      syncingLocalItems.current.add(item.id)
+      void (async () => {
+        let uploadedPath: string | null = null
+        try {
+          uploadedPath = await uploadClothingPhoto(item.photoUrl, currentUserId)
+          const created = await wardrobeApi.createItem({
+            userId: currentUserId,
+            photoUrl: uploadedPath,
+            category: item.category,
+            name: item.name,
+            colorDominant: item.colorDominant,
+          })
+          if (wardrobeApi.lastRemoteError) throw wardrobeApi.lastRemoteError
+
+          const analysis = await wardrobeApi.analyzeClothing(uploadedPath, item.category)
+          if (!wardrobeApi.lastRemoteError) {
+            await wardrobeApi.updateItem(created.id, {
+              colorDominant: analysis.couleurDominante,
+              name: item.name || analysis.nomSuggere,
+            })
+          }
+
+          storagePaths.current.set(created.id, uploadedPath)
+          try {
+            wardrobeStore.updateItem(created.id, { photoUrl: await signedPhotoUrl(uploadedPath) })
+          } catch {
+            wardrobeStore.updateItem(created.id, { photoUrl: item.photoUrl })
+          }
+          wardrobeStore.removeItem(item.id)
+          showToast('Pièce synchronisée en ligne.')
+        } catch (error) {
+          if (uploadedPath && supabase) {
+            await supabase.storage.from('clothing-photos').remove([uploadedPath]).catch(() => undefined)
+          }
+          if (!isLikelyNetworkError(error)) {
+            console.warn('Unable to sync local wardrobe item:', error)
+          }
+        } finally {
+          syncingLocalItems.current.delete(item.id)
+        }
+      })()
+    }
+  }, [authenticated, currentUserId, isOnline, state.items])
 
   useEffect(() => {
     if (bootLoading || authLoading || !authenticated || initialEntryPlayed.current) return
@@ -725,6 +804,7 @@ function App() {
 
     const addLocalFallbackItem = () => {
       wardrobeStore.addItem({
+        userId: currentUserId ?? state.userId,
         photoUrl: photoData,
         category: addCategory,
         name: addName.trim() || `${CATEGORY_LABELS_SINGULAR[addCategory]} sans nom`,
@@ -740,7 +820,7 @@ function App() {
     try {
       if (!isOnline && supabase && currentUserId) {
         addLocalFallbackItem()
-        showToast('Pièce ajoutée en mode hors ligne. Elle reste sur cet appareil.')
+        showToast('Pièce ajoutée hors ligne. Elle sera synchronisée au retour du réseau.')
         return
       }
 
@@ -799,8 +879,8 @@ function App() {
       addLocalFallbackItem()
       showToast(
         isLikelyNetworkError(error)
-          ? 'Pièce ajoutée en secours local. La connexion cloud était instable.'
-          : 'Pièce ajoutée en secours local. La synchro cloud pourra être retentée plus tard.',
+          ? 'Pièce gardée localement. La synchronisation se relancera automatiquement.'
+          : 'Pièce gardée localement. L’app retentera la synchronisation en ligne.',
       )
     } finally {
       setSavingItem(false)
