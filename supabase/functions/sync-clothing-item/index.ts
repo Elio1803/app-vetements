@@ -63,7 +63,7 @@ async function ensurePublicUser(userId: string, email: string | null): Promise<v
     const { error: releaseEmailError } = await client
       .from("users")
       .update({ email: `stale-${crypto.randomUUID()}@local.invalid` })
-      .eq("email", normalizedEmail)
+      .ilike("email", normalizedEmail)
       .neq("id", userId);
 
     if (releaseEmailError) {
@@ -80,11 +80,24 @@ async function ensurePublicUser(userId: string, email: string | null): Promise<v
 
     if (!retryError) return;
     console.error("Unable to ensure public user after retry:", retryError.code, retryError.message);
+    throw new HttpError(
+      500,
+      "USER_SYNC_FAILED",
+      `Profil bloqué après nettoyage (${retryError.code ?? "no_code"}): ${
+        retryError.message ?? "erreur inconnue"
+      }`,
+    );
   }
 
   if (upsertError) {
     console.error("Unable to ensure public user:", upsertError.code, upsertError.message);
-    throw new HttpError(500, "USER_SYNC_FAILED", "Unable to prepare user profile.");
+    throw new HttpError(
+      500,
+      "USER_SYNC_FAILED",
+      `Profil bloqué (${upsertError.code ?? "no_code"}): ${
+        upsertError.message ?? "erreur inconnue"
+      }`,
+    );
   }
 }
 
