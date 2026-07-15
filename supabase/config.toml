@@ -8,6 +8,9 @@ verify_jwt = false
 [functions.generate-outfits]
 verify_jwt = false
 
+[functions.compose-outfit]
+verify_jwt = false
+
 [functions.remove-background]
 verify_jwt = false
 

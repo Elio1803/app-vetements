@@ -5,6 +5,8 @@ import type {
   ClothingItemPatch,
   NewClothingItem,
   Outfit,
+  OutfitCompositionRequest,
+  OutfitCompositionResult,
   OutfitGenerationRequest,
   OutfitSuggestion,
   WardrobeApiMode,
@@ -40,6 +42,7 @@ export interface WardrobeApi {
   deleteItem(id: string): Promise<boolean>;
   analyzeClothing(imagePath: string, category: ClothingCategory): Promise<ClothingAnalysis>;
   generateOutfits(request: OutfitGenerationRequest): Promise<OutfitSuggestion[]>;
+  composeOutfit(request: OutfitCompositionRequest): Promise<OutfitCompositionResult>;
   markOutfitWorn(suggestion: OutfitSuggestion, wornAt?: string): Promise<Outfit>;
 }
 
@@ -349,6 +352,41 @@ export class SupabaseWardrobeApi implements WardrobeApi {
     }
     this.recordFallback(lastError);
     return this.store.generateOutfits(request.occasion, request.note);
+  }
+
+  async composeOutfit(
+    request: OutfitCompositionRequest,
+  ): Promise<OutfitCompositionResult> {
+    if (this.mode === "local") {
+      return {
+        imageUrl: "",
+        provider: "local",
+        message: "Le rendu IA nécessite la synchronisation cloud.",
+      };
+    }
+
+    try {
+      const data = await this.request("/functions/v1/compose-outfit", {
+        method: "POST",
+        body: JSON.stringify({
+          suggestionId: request.suggestion.id,
+          itemIds: request.suggestion.itemIds,
+        }),
+      });
+      if (!isRecord(data)) throw new Error("Réponse de composition invalide.");
+      const imageUrl = typeof data.imageUrl === "string" ? data.imageUrl : "";
+      const message = typeof data.message === "string" ? data.message : undefined;
+      if (!imageUrl) throw new Error(message || "Image de tenue indisponible.");
+      this.remoteError = null;
+      return {
+        imageUrl,
+        provider: data.provider === "fal" ? "fal" : "local",
+        message,
+      };
+    } catch (error) {
+      this.recordFallback(error);
+      throw asError(error);
+    }
   }
 
   async markOutfitWorn(

@@ -5,9 +5,10 @@ interface OutfitBoardProps {
   items: ClothingItem[]
   lookNumber: number
   variant?: 'outfit' | 'garment'
+  generatedImageUrl?: string
 }
 
-export function OutfitBoard({ items, lookNumber, variant = 'outfit' }: OutfitBoardProps) {
+export function OutfitBoard({ items, lookNumber, variant = 'outfit', generatedImageUrl }: OutfitBoardProps) {
   const bodyItems = [...items]
     .sort((left, right) => {
       const order: ClothingItem['category'][] = ['bas', 'haut', 'veste_manteau', 'robe', 'chaussures', 'accessoire']
@@ -21,6 +22,14 @@ export function OutfitBoard({ items, lookNumber, variant = 'outfit' }: OutfitBoa
       aria-label={`Planche de la tenue ${lookNumber} : ${items.map((item) => item.name).join(', ')}`}
     >
       <span className="outfit-board-kicker">{variant === 'garment' ? 'Aperçu mannequin' : `Look 0${lookNumber}`}</span>
+      {generatedImageUrl && (
+        <img
+          className="outfit-board-generated"
+          src={generatedImageUrl}
+          alt=""
+          aria-hidden="true"
+        />
+      )}
       <div className="outfit-board-model" aria-hidden="true">
         <svg viewBox="0 0 180 430" focusable="false">
           <defs>

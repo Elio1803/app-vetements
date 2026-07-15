@@ -98,6 +98,17 @@ export interface OutfitGenerationRequest {
   items?: ClothingItem[];
 }
 
+export interface OutfitCompositionRequest {
+  suggestion: OutfitSuggestion;
+  items?: ClothingItem[];
+}
+
+export interface OutfitCompositionResult {
+  imageUrl: string;
+  provider: "fal" | "local";
+  message?: string;
+}
+
 export interface ClothingAnalysis {
   couleurDominante: string;
   nomSuggere: string;
@@ -136,4 +147,3 @@ export interface MarkOutfitWornInput {
 }
 
 export type WardrobeApiMode = "supabase" | "local";
-
