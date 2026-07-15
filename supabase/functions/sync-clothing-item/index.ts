@@ -45,29 +45,46 @@ function categoryFromForm(formData: FormData): ClothingCategory {
 async function ensurePublicUser(userId: string, email: string | null): Promise<void> {
   const client = adminClient();
 
+  const normalizedEmail = email?.trim().toLowerCase() || null;
+  const profilePayload = normalizedEmail
+    ? { id: userId, email: normalizedEmail }
+    : { id: userId };
+
   const { error: upsertError } = await client
     .from("users")
-    .upsert({
-      id: userId,
-      email: null,
-    }, { onConflict: "id" });
+    .upsert(profilePayload, { onConflict: "id" });
+
+  if (!upsertError) return;
+
+  // Older test accounts can leave a stale public.users row with the same e-mail
+  // but a different auth id. In that case, free the e-mail and retry with the
+  // current authenticated id so wardrobe sync is not blocked on mobile.
+  if (normalizedEmail && upsertError.code === "23505") {
+    const { error: releaseEmailError } = await client
+      .from("users")
+      .update({ email: `stale-${crypto.randomUUID()}@local.invalid` })
+      .eq("email", normalizedEmail)
+      .neq("id", userId);
+
+    if (releaseEmailError) {
+      console.warn(
+        "Unable to release stale user e-mail:",
+        releaseEmailError.code,
+        releaseEmailError.message,
+      );
+    }
+
+    const { error: retryError } = await client
+      .from("users")
+      .upsert(profilePayload, { onConflict: "id" });
+
+    if (!retryError) return;
+    console.error("Unable to ensure public user after retry:", retryError.code, retryError.message);
+  }
 
   if (upsertError) {
     console.error("Unable to ensure public user:", upsertError.code, upsertError.message);
     throw new HttpError(500, "USER_SYNC_FAILED", "Unable to prepare user profile.");
-  }
-
-  if (email) {
-    const { error: emailError } = await client
-      .from("users")
-      .update({ email })
-      .eq("id", userId);
-
-    // The e-mail is useful for display/welcome flows, but it must never block
-    // wardrobe sync. A stale duplicate e-mail row can exist after auth tests.
-    if (emailError) {
-      console.warn("Unable to update public user email:", emailError.code, emailError.message);
-    }
   }
 }
 
