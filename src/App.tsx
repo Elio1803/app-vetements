@@ -1,4 +1,10 @@
 import {
+  AnimatePresence,
+  motion,
+  useReducedMotion,
+  type PanInfo,
+} from 'framer-motion'
+import {
   BriefcaseBusiness,
   Camera,
   Check,
@@ -28,6 +34,7 @@ import {
 } from 'lucide-react'
 import {
   type ChangeEvent,
+  type DragEvent,
   type FormEvent,
   useEffect,
   useMemo,
@@ -35,10 +42,13 @@ import {
   useState,
 } from 'react'
 import { BrandMark } from './components/BrandMark'
+import { AnimatedCounter } from './components/AnimatedCounter'
 import { ClothingPhoto } from './components/ClothingPhoto'
 import { LoadingScreen } from './components/LoadingScreen'
 import { OutfitBoard } from './components/OutfitBoard'
 import { Sheet } from './components/Sheet'
+import { SkeletonCard } from './components/SkeletonCard'
+import { cardVariants, gridVariants, screenVariants, toastVariants, TRANSITIONS } from './lib/animations'
 import { daysSince, formatLastWorn } from './lib/dates'
 import { wardrobeSeasonForDate, wardrobeSeasonLabel } from './lib/outfit-engine'
 import {
@@ -113,6 +123,13 @@ const GARMENT_FOCUS_OPTIONS: Record<ClothingCategory, Array<{ value: GarmentFocu
     { value: 'dress_long', label: 'Robe longue' },
   ],
 }
+
+const UPLOAD_PROGRESS_MESSAGES = [
+  'Analyse de l’image…',
+  'Suppression du fond…',
+  'Mise en valeur du vêtement…',
+  'Finalisation…',
+] as const
 
 interface InstallPromptEvent extends Event {
   prompt: () => Promise<void>
@@ -453,10 +470,26 @@ function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenProps) {
 
 function ClothingCard({ item, onOpen }: { item: ClothingItem; onOpen: () => void }) {
   const status = itemStatus(item)
+  const shouldReduceMotion = useReducedMotion()
+  const canHover = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches
   return (
-    <button className="clothing-card" onClick={onOpen} aria-label={`${item.name ?? 'Pièce sans nom'}, ${status.label}`}>
+    <motion.button
+      layout
+      variants={shouldReduceMotion ? undefined : cardVariants}
+      className="clothing-card"
+      onClick={onOpen}
+      aria-label={`${item.name ?? 'Pièce sans nom'}, ${status.label}`}
+      whileHover={!shouldReduceMotion && canHover ? { y: -4, scale: 1.03 } : undefined}
+      whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
+      transition={TRANSITIONS.spring}
+    >
       <div className="clothing-card-image">
-        <img className="clothing-photo clothing-photo--product" src={item.photoUrl} alt={item.name ?? CATEGORY_LABELS_SINGULAR[item.category]} />
+        <ClothingPhoto
+          item={item}
+          className="clothing-photo--product"
+          alt={item.name ?? CATEGORY_LABELS_SINGULAR[item.category]}
+          layoutId={`item-photo-${item.id}`}
+        />
         <span className={`worn-badge worn-badge--${status.tone}`}>
           <Clock3 size={12} />
           <span className="worn-badge-full">{status.label}</span>
@@ -468,12 +501,13 @@ function ClothingCard({ item, onOpen }: { item: ClothingItem; onOpen: () => void
         <strong>{item.name ?? `${CATEGORY_LABELS_SINGULAR[item.category]} sans nom`}</strong>
         <small>{item.colorDominant ?? 'Couleur à analyser'}</small>
       </span>
-    </button>
+    </motion.button>
   )
 }
 
 function App() {
   const state = useWardrobeStore()
+  const shouldReduceMotion = useReducedMotion()
   const initialLocalSession = getLocalSession()
   const [authenticated, setAuthenticated] = useState(() => !isSupabaseConfigured && Boolean(initialLocalSession))
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured)
@@ -496,6 +530,8 @@ function App() {
   const [photoData, setPhotoData] = useState('')
   const [photoBusy, setPhotoBusy] = useState(false)
   const [savingItem, setSavingItem] = useState(false)
+  const [progressMessageIndex, setProgressMessageIndex] = useState(0)
+  const [isPhotoDragOver, setIsPhotoDragOver] = useState(false)
   const [addError, setAddError] = useState('')
   const [occasion, setOccasion] = useState<Occasion>(state.selectedOccasion)
   const [note, setNote] = useState('')
@@ -614,6 +650,17 @@ function App() {
     const timer = window.setTimeout(() => setAppEntering(false), 1200)
     return () => window.clearTimeout(timer)
   }, [appEntering])
+
+  useEffect(() => {
+    if (!photoBusy && !savingItem) {
+      setProgressMessageIndex(0)
+      return undefined
+    }
+    const interval = window.setInterval(() => {
+      setProgressMessageIndex((index) => (index + 1) % UPLOAD_PROGRESS_MESSAGES.length)
+    }, 1500)
+    return () => window.clearInterval(interval)
+  }, [photoBusy, savingItem])
 
   const syncLocalItemsNow = async (manual = false) => {
     if (syncLocalItemsRunning.current) return
@@ -834,6 +881,17 @@ function App() {
     }
   }
 
+  const dismissSuggestion = (suggestionId: string) => {
+    wardrobeStore.setSuggestions(
+      state.suggestions.filter((suggestion) => suggestion.id !== suggestionId),
+      state.selectedOccasion,
+    )
+  }
+
+  const handleSuggestionDragEnd = (suggestionId: string, _event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    if (Math.abs(info.offset.x) > 120) dismissSuggestion(suggestionId)
+  }
+
   const installApplication = async () => {
     if (installPrompt.current) {
       await installPrompt.current.prompt()
@@ -860,8 +918,7 @@ function App() {
     setEditCategory(item.category)
   }
 
-  const handlePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0]
+  const preparePhotoFile = async (file: File) => {
     if (!file) return
     setPhotoBusy(true)
     setAddError('')
@@ -897,8 +954,24 @@ function App() {
       )
     } finally {
       setPhotoBusy(false)
+    }
+  }
+
+  const handlePhoto = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file) return
+    try {
+      await preparePhotoFile(file)
+    } finally {
       event.target.value = ''
     }
+  }
+
+  const handlePhotoDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault()
+    setIsPhotoDragOver(false)
+    const file = event.dataTransfer.files?.[0]
+    if (file) void preparePhotoFile(file)
   }
 
   const changeAddCategory = (category: ClothingCategory) => {
@@ -1202,8 +1275,17 @@ function App() {
           <BrandMark />
         </header>
 
+        <AnimatePresence mode="wait">
         {view === 'wardrobe' ? (
-          <div className="page-content wardrobe-page">
+          <motion.div
+            key="wardrobe"
+            className="page-content wardrobe-page"
+            variants={shouldReduceMotion ? undefined : screenVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={TRANSITIONS.screen}
+          >
             <header className="page-heading wardrobe-heading">
               <div>
                 <p className="eyebrow">{formatToday(today)} · Votre sélection</p>
@@ -1268,7 +1350,7 @@ function App() {
                   </div>
                 ))}
                 <div className="rotation-score">
-                  <strong>{stats.rotationScore}%</strong>
+                  <strong><AnimatedCounter value={stats.rotationScore} suffix="%" /></strong>
                   <span>en rotation</span>
                 </div>
               </div>
@@ -1278,7 +1360,7 @@ function App() {
               <div className="section-title-row">
                 <div>
                   <p className="eyebrow">Votre collection</p>
-                  <h2 id="wardrobe-title">Mon dressing <span>{state.items.length}</span></h2>
+                  <h2 id="wardrobe-title">Mon dressing <span><AnimatedCounter value={state.items.length} /></span></h2>
                 </div>
                 <div className="wardrobe-tools">
                   <label className="search-field">
@@ -1320,17 +1402,33 @@ function App() {
                         <h3 id={`group-${group.category}`}>{CATEGORY_LABELS[group.category]}</h3>
                         <span>{group.items.length.toString().padStart(2, '0')}</span>
                       </div>
-                      <div className="clothing-grid">
-                        {group.items.map((item) => (
-                          <ClothingCard item={item} onOpen={() => openItem(item)} key={item.id} />
+                      <motion.div
+                        className="clothing-grid"
+                        variants={shouldReduceMotion ? undefined : gridVariants}
+                        initial="initial"
+                        animate="animate"
+                      >
+                        <AnimatePresence initial={false}>
+                          {group.items.map((item) => (
+                            <ClothingCard item={item} onOpen={() => openItem(item)} key={item.id} />
+                          ))}
+                        </AnimatePresence>
+                        {cloudRefreshing && Array.from({ length: Math.min(2, Math.max(1, group.items.length)) }, (_, index) => (
+                          <SkeletonCard key={`skeleton-${group.category}-${index}`} />
                         ))}
                         {category !== 'all' && (
-                          <button className="add-tile" onClick={() => setAddOpen(true)}>
+                          <motion.button
+                            layout
+                            className="add-tile"
+                            onClick={() => setAddOpen(true)}
+                            whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
+                            transition={TRANSITIONS.spring}
+                          >
                             <span><Plus size={21} /></span>
                             Ajouter une pièce
-                          </button>
+                          </motion.button>
                         )}
-                      </div>
+                      </motion.div>
                     </section>
                   ))}
                 </div>
@@ -1343,9 +1441,17 @@ function App() {
                 </div>
               )}
             </section>
-          </div>
+          </motion.div>
         ) : (
-          <div className="page-content generate-page">
+          <motion.div
+            key="generate"
+            className="page-content generate-page"
+            variants={shouldReduceMotion ? undefined : screenVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={TRANSITIONS.screen}
+          >
             <header className="page-heading generator-heading">
               <div>
                 <p className="eyebrow">Votre styliste personnel</p>
@@ -1419,7 +1525,17 @@ function App() {
                   disabled={!canGenerate || generating}
                   aria-busy={generating}
                 >
-                  <span>{generating ? <RefreshCw className="spin" size={20} /> : <Sparkles size={20} />}</span>
+                  <span>
+                    {generating ? (
+                      <motion.span
+                        className="motion-icon"
+                        animate={shouldReduceMotion ? undefined : { rotate: 360 }}
+                        transition={shouldReduceMotion ? undefined : { repeat: Infinity, duration: 1, ease: 'linear' }}
+                      >
+                        <RefreshCw size={20} />
+                      </motion.span>
+                    ) : <Sparkles size={20} />}
+                  </span>
                   <span>
                     <strong>{generating ? 'On compose vos tenues…' : 'Générer 3 tenues'}</strong>
                     <small>{generating ? 'Cela peut prendre quelques secondes.' : `${state.items.length} pièces disponibles`}</small>
@@ -1437,17 +1553,42 @@ function App() {
                         <h2>{state.suggestions.length} idées · {OCCASION_LABELS[state.selectedOccasion]}</h2>
                       </div>
                       <button className="text-link" onClick={generate} disabled={generating}>
-                        <RefreshCw size={15} /> Régénérer
+                        <motion.span
+                          className="motion-icon"
+                          animate={generating && !shouldReduceMotion ? { rotate: 360 } : { rotate: 0 }}
+                          transition={generating && !shouldReduceMotion ? { repeat: Infinity, duration: 1, ease: 'linear' } : TRANSITIONS.micro}
+                        >
+                          <RefreshCw size={15} />
+                        </motion.span>
+                        Régénérer
                       </button>
                     </div>
-                    <div className="outfit-list">
+                    <motion.div
+                      className="outfit-list"
+                      variants={shouldReduceMotion ? undefined : gridVariants}
+                      initial="initial"
+                      animate="animate"
+                    >
+                      <AnimatePresence initial={false}>
                       {state.suggestions.map((suggestion, index) => {
                         const items = suggestion.itemIds
                           .map((id) => state.items.find((item) => item.id === id))
                           .filter((item): item is ClothingItem => Boolean(item))
                         const worn = state.outfits.some((outfit) => outfit.id === `worn-${suggestion.id}`)
                         return (
-                          <article className="outfit-card" key={suggestion.id}>
+                          <motion.article
+                            layout
+                            className="outfit-card"
+                            key={suggestion.id}
+                            drag={shouldReduceMotion ? false : 'x'}
+                            dragConstraints={{ left: 0, right: 0 }}
+                            whileDrag={shouldReduceMotion ? undefined : { rotate: 5 }}
+                            onDragEnd={(event, info) => handleSuggestionDragEnd(suggestion.id, event, info)}
+                            initial={shouldReduceMotion ? false : { opacity: 0, y: 16 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, x: 180, scale: 0.94 }}
+                            transition={TRANSITIONS.spring}
+                          >
                             <div className="outfit-number">0{index + 1}</div>
                             <OutfitBoard items={items} lookNumber={index + 1} />
                             <div className="outfit-card-body">
@@ -1473,10 +1614,11 @@ function App() {
                                 <Share2 size={16} /> Partager la tenue
                               </button>
                             </div>
-                          </article>
+                          </motion.article>
                         )
                       })}
-                    </div>
+                      </AnimatePresence>
+                    </motion.div>
                   </>
                 ) : (
                   <div className="generator-empty">
@@ -1492,16 +1634,17 @@ function App() {
                     <h2>Votre dressing a déjà de bonnes idées.</h2>
                     <p>Choisissez une occasion : nous remettrons d’abord en lumière les pièces les plus oubliées.</p>
                     <div className="empty-metrics">
-                      <span><strong>{state.items.length}</strong> pièces</span>
-                      <span><strong>{stats.neverWorn}</strong> jamais portées</span>
-                      <span><strong>{stats.rotationScore}%</strong> en rotation</span>
+                  <span><strong><AnimatedCounter value={state.items.length} /></strong> pièces</span>
+                  <span><strong><AnimatedCounter value={stats.neverWorn} /></strong> jamais portées</span>
+                  <span><strong><AnimatedCounter value={stats.rotationScore} suffix="%" /></strong> en rotation</span>
                     </div>
                   </div>
                 )}
               </section>
             </div>
-          </div>
+          </motion.div>
         )}
+        </AnimatePresence>
       </main>
 
       <nav className="mobile-nav" aria-label="Navigation principale">
@@ -1567,13 +1710,19 @@ function App() {
         {photoBusy && (
           <div className="upload-status" role="status" aria-live="polite">
             <RefreshCw size={16} className="spin-icon" />
-            <p>Préparation de la photo en cours. Gardez l’application ouverte.</p>
+            <div>
+              <p>{UPLOAD_PROGRESS_MESSAGES[progressMessageIndex]}</p>
+              <span className="upload-progress"><span /></span>
+            </div>
           </div>
         )}
         {savingItem && (
           <div className="upload-status" role="status" aria-live="polite">
             <Upload size={16} className="pulse-icon" />
-            <p>Envoi sécurisé de la photo et analyse de la pièce…</p>
+            <div>
+              <p>{UPLOAD_PROGRESS_MESSAGES[progressMessageIndex]}</p>
+              <span className="upload-progress"><span /></span>
+            </div>
           </div>
         )}
         {photoData ? (
@@ -1582,7 +1731,15 @@ function App() {
             <button onClick={() => galleryInput.current?.click()}><RefreshCw size={16} /> Changer la photo</button>
           </div>
         ) : (
-          <div className="photo-picker">
+          <div
+            className={isPhotoDragOver ? 'photo-picker is-drag-over' : 'photo-picker'}
+            onDragOver={(event) => {
+              event.preventDefault()
+              setIsPhotoDragOver(true)
+            }}
+            onDragLeave={() => setIsPhotoDragOver(false)}
+            onDrop={handlePhotoDrop}
+          >
             <div className="photo-picker-icon"><ImagePlus size={26} /></div>
             <strong>{photoBusy ? 'Détourage et mise en valeur…' : 'Ajoutez la photo de votre pièce'}</strong>
             <p>JPG, PNG ou HEIC · fond blanc produit</p>
@@ -1625,7 +1782,7 @@ function App() {
       >
         {selectedItem && (
           <>
-            <ClothingPhoto item={selectedItem} className="detail-photo" eager />
+            <ClothingPhoto item={selectedItem} className="detail-photo" eager layoutId={`item-photo-${selectedItem.id}`} />
             {editItem ? (
               <div className="edit-form">
                 <label className="field-label" htmlFor="edit-name">Nom de la pièce</label>
@@ -1653,7 +1810,16 @@ function App() {
                   <div><dt>Couleur</dt><dd>{selectedItem.colorDominant ?? 'À analyser'}</dd></div>
                   <div><dt>Rotation</dt><dd>{formatLastWorn(selectedItem.lastWornAt)}</dd></div>
                 </dl>
-                <button className="danger-button" onClick={deleteSelected}><Trash2 size={17} /> Supprimer la pièce</button>
+                <motion.button
+                  className="danger-button"
+                  onClick={deleteSelected}
+                  initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ ...TRANSITIONS.micro, delay: shouldReduceMotion ? 0 : 0.1 }}
+                  whileTap={shouldReduceMotion ? undefined : { scale: 0.96 }}
+                >
+                  <Trash2 size={17} /> Supprimer la pièce
+                </motion.button>
               </>
             )}
           </>
@@ -1698,9 +1864,9 @@ function App() {
           </div>
         </div>
         <div className="account-stats">
-          <span><strong>{state.items.length}</strong> pièces</span>
-          <span><strong>{state.outfits.length}</strong> tenues portées</span>
-          <span><strong>{stats.rotationScore}%</strong> en rotation</span>
+          <span><strong><AnimatedCounter value={state.items.length} /></strong> pièces</span>
+          <span><strong><AnimatedCounter value={state.outfits.length} /></strong> tenues portées</span>
+          <span><strong><AnimatedCounter value={stats.rotationScore} suffix="%" /></strong> en rotation</span>
         </div>
         {supabase && (
           <div className={syncError ? 'sync-card sync-card--error' : 'sync-card'}>
@@ -1741,7 +1907,21 @@ function App() {
         <button className="danger-button full-button" onClick={signOut}><LogOut size={17} /> Se déconnecter</button>
       </Sheet>
 
-      {toast && <div className="toast" role="status"><Check size={17} /> {toast}</div>}
+      <AnimatePresence>
+        {toast && (
+          <motion.div
+            className="toast"
+            role="status"
+            variants={shouldReduceMotion ? undefined : toastVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={TRANSITIONS.spring}
+          >
+            <Check size={17} /> {toast}
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

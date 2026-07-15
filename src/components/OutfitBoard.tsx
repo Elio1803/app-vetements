@@ -1,5 +1,7 @@
 import type { ClothingItem } from '../types'
 import { ClothingPhoto } from './ClothingPhoto'
+import { motion, useReducedMotion } from 'framer-motion'
+import { gridVariants, TRANSITIONS } from '../lib/animations'
 
 interface OutfitBoardProps {
   items: ClothingItem[]
@@ -9,6 +11,7 @@ interface OutfitBoardProps {
 }
 
 export function OutfitBoard({ items, lookNumber, variant = 'outfit', generatedImageUrl }: OutfitBoardProps) {
+  const shouldReduceMotion = useReducedMotion()
   const bodyItems = [...items]
     .sort((left, right) => {
       const order: ClothingItem['category'][] = ['veste_manteau', 'haut', 'robe', 'bas', 'chaussures', 'accessoire']
@@ -31,16 +34,27 @@ export function OutfitBoard({ items, lookNumber, variant = 'outfit', generatedIm
             aria-hidden="true"
           />
         ) : (
-          <div className="flatlay-stage" aria-hidden="true">
+          <motion.div
+            className="flatlay-stage"
+            aria-hidden="true"
+            variants={shouldReduceMotion ? undefined : gridVariants}
+            initial="initial"
+            animate="animate"
+          >
             {bodyItems.map((item, index) => (
-              <div
+              <motion.div
                 className={`flatlay-item flatlay-item--${item.category} flatlay-item--${index + 1}`}
                 key={`flatlay-${item.id}`}
+                variants={shouldReduceMotion ? undefined : {
+                  initial: { opacity: 0 },
+                  animate: { opacity: 1 },
+                }}
+                transition={TRANSITIONS.spring}
               >
                 <ClothingPhoto item={item} alt="" eager />
-              </div>
+              </motion.div>
             ))}
-          </div>
+          </motion.div>
         )}
         <span className="outfit-board-script">le dressing</span>
       </div>
@@ -88,21 +102,30 @@ export function OutfitBoard({ items, lookNumber, variant = 'outfit', generatedIm
         </svg>
 
         {bodyItems.map((item) => (
-          <div
+          <motion.div
             className={`outfit-board-worn outfit-board-worn--${item.category}`}
             key={`worn-${item.id}`}
+            initial={shouldReduceMotion ? false : { opacity: 0, scale: 0.94 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={TRANSITIONS.spring}
           >
             <ClothingPhoto item={item} alt="" eager />
-          </div>
+          </motion.div>
         ))}
       </div>
 
       <div className="outfit-board-pieces" aria-hidden="true">
-        {items.slice(0, 4).map((item) => (
-          <div className={`outfit-board-piece outfit-board-piece--${item.category}`} key={item.id}>
+        {items.slice(0, 4).map((item, index) => (
+          <motion.div
+            className={`outfit-board-piece outfit-board-piece--${item.category}`}
+            key={item.id}
+            initial={shouldReduceMotion ? false : { opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ ...TRANSITIONS.micro, delay: shouldReduceMotion ? 0 : index * 0.04 }}
+          >
             <ClothingPhoto item={item} alt="" eager />
             <span>{item.name}</span>
-          </div>
+          </motion.div>
         ))}
       </div>
       <span className="outfit-board-script">le dressing</span>

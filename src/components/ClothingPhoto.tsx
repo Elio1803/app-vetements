@@ -1,10 +1,12 @@
 import type { ClothingItem } from '../types'
+import { motion } from 'framer-motion'
 
 interface ClothingPhotoProps {
   item: ClothingItem
   className?: string
   alt?: string
   eager?: boolean
+  layoutId?: string
 }
 
 export function ClothingPhoto({
@@ -12,12 +14,14 @@ export function ClothingPhoto({
   className = '',
   alt,
   eager = false,
+  layoutId,
 }: ClothingPhotoProps) {
   const label = alt ?? item.name ?? 'Vêtement'
 
   if (item.photoPosition) {
     return (
-      <div
+      <motion.div
+        layoutId={layoutId}
         className={`clothing-photo ${className}`}
         role="img"
         aria-label={label}
@@ -32,7 +36,8 @@ export function ClothingPhoto({
   }
 
   return (
-    <img
+    <motion.img
+      layoutId={layoutId}
       className={`clothing-photo ${className}`}
       src={item.photoUrl}
       alt={label}
