@@ -113,6 +113,7 @@ supabase db push
 supabase secrets set --env-file supabase/.env.production
 supabase functions deploy analyze-clothing
 supabase functions deploy generate-outfits
+supabase functions deploy compose-outfit
 supabase functions deploy remove-background
 supabase functions deploy send-welcome-email
 ```
@@ -181,6 +182,47 @@ métadonnées. Elle rejette tout identifiant inventé, toute tenue incomplète e
 toute réponse autre que trois tenues distinctes. Si le dressing ne permet pas
 mathématiquement trois variantes, elle répond `422 INSUFFICIENT_VARIETY` avant
 de facturer un appel IA.
+
+### `compose-outfit`
+
+Cette fonction prépare le vrai rendu visuel d'une tenue sur mannequin. Le
+navigateur envoie uniquement les identifiants des pièces ; la fonction vérifie
+que les vêtements appartiennent bien à l'utilisateur, récupère les photos dans
+le stockage privé, puis appelle le fournisseur IA côté serveur.
+
+Pour une tenue multi-pièces, les appels sont enchaînés : le résultat du premier
+essayage devient l'image de référence du suivant. Cela évite d'exposer une clé
+API dans le client.
+
+Secrets à configurer :
+
+```bash
+supabase secrets set FAL_API_KEY=...
+supabase secrets set TRYON_MODEL_IMAGE_URL=https://.../mannequin-neutre.jpg
+supabase secrets set FAL_TRYON_MODEL=fal-ai/fashn/tryon
+```
+
+Requête :
+
+```json
+{
+  "itemIds": [
+    "550e8400-e29b-41d4-a716-446655440000",
+    "550e8400-e29b-41d4-a716-446655440001"
+  ]
+}
+```
+
+Réponse `200` :
+
+```json
+{
+  "imageUrl": "https://...",
+  "provider": "fal",
+  "steps": 2,
+  "message": "Visuel IA créé en plusieurs étapes."
+}
+```
 
 Réponse `200` (les trois lignes sont déjà enregistrées dans `outfits`) :
 
