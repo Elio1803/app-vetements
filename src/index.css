@@ -2300,6 +2300,25 @@ select {
 .account-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 14px 0 22px; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--line); }
 .account-stats span { display: flex; min-height: 70px; align-items: center; justify-content: center; flex-direction: column; background: #faf7f2; color: var(--muted); font-size: .54rem; }
 .account-stats strong { color: var(--ink); font-family: var(--serif); font-size: 1.15rem; font-weight: 550; }
+.sync-card {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 12px;
+  margin: 0 0 14px;
+  padding: 14px;
+  border: 1px solid rgba(87,119,89,.26);
+  border-radius: 11px;
+  background: linear-gradient(135deg, rgba(234,244,233,.9), rgba(250,247,242,.96));
+}
+.sync-card--error {
+  border-color: rgba(153,72,65,.32);
+  background: linear-gradient(135deg, rgba(255,235,232,.96), rgba(250,247,242,.96));
+}
+.sync-card-icon { display: grid; width: 40px; height: 40px; place-items: center; border-radius: 50%; background: rgba(32,31,27,.9); color: white; }
+.sync-card > div { align-self: center; }
+.sync-card strong { font-family: var(--serif); font-size: .84rem; font-weight: 600; }
+.sync-card p { margin: 4px 0 0; color: var(--muted); font-size: .6rem; line-height: 1.42; overflow-wrap: anywhere; }
+.sync-card .secondary-button { min-height: 40px; grid-column: 1 / -1; }
 .install-card {
   display: grid;
   grid-template-columns: auto 1fr;

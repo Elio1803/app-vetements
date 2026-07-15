@@ -505,6 +505,8 @@ function App() {
   const [appEntering, setAppEntering] = useState(false)
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
   const [cloudRefreshing, setCloudRefreshing] = useState(false)
+  const [manualSyncing, setManualSyncing] = useState(false)
+  const [syncError, setSyncError] = useState('')
   const [today, setToday] = useState(() => new Date())
   const [canInstall, setCanInstall] = useState(false)
   const [isInstalled, setIsInstalled] = useState(() => {
@@ -612,53 +614,77 @@ function App() {
     return () => window.clearTimeout(timer)
   }, [appEntering])
 
-  useEffect(() => {
-    if (!supabase || !currentUserId || !isOnline || !authenticated) return
+  const syncLocalItemsNow = async (manual = false) => {
+    if (!supabase || !currentUserId || !isOnline || !authenticated) {
+      if (manual) {
+        setSyncError('Connectez-vous au compte et vérifiez Internet avant de synchroniser.')
+        setToast('Synchronisation impossible : compte ou réseau indisponible.')
+      }
+      return
+    }
     const pendingItems = state.items.filter((item) =>
       isLocalPhotoUrl(item.photoUrl) && !syncingLocalItems.current.has(item.id)
     )
-    if (!pendingItems.length) return
+    if (!pendingItems.length) {
+      if (manual) {
+        setSyncError('')
+        setToast('Aucune pièce locale à synchroniser sur cet appareil.')
+      }
+      return
+    }
 
+    if (manual) setManualSyncing(true)
+    setSyncError('')
+    let syncedCount = 0
     for (const item of pendingItems) {
       syncingLocalItems.current.add(item.id)
-      void (async () => {
-        try {
-          const synced = await syncClothingItemToCloud({
-            dataUrl: item.photoUrl,
-            userId: currentUserId,
-            category: item.category,
-            name: item.name,
-            colorDominant: item.colorDominant,
+      try {
+        const synced = await syncClothingItemToCloud({
+          dataUrl: item.photoUrl,
+          userId: currentUserId,
+          category: item.category,
+          name: item.name,
+          colorDominant: item.colorDominant,
+        })
+        const uploadedPath = synced.photoPath
+        const created = synced.item
+        wardrobeStore.addItem(created)
+
+        const analysis = await wardrobeApi.analyzeClothing(uploadedPath, item.category)
+        if (!wardrobeApi.lastRemoteError) {
+          await wardrobeApi.updateItem(created.id, {
+            colorDominant: analysis.couleurDominante,
+            name: item.name || analysis.nomSuggere,
           })
-          const uploadedPath = synced.photoPath
-          const created = synced.item
-          wardrobeStore.addItem(created)
-
-          const analysis = await wardrobeApi.analyzeClothing(uploadedPath, item.category)
-          if (!wardrobeApi.lastRemoteError) {
-            await wardrobeApi.updateItem(created.id, {
-              colorDominant: analysis.couleurDominante,
-              name: item.name || analysis.nomSuggere,
-            })
-          }
-
-          storagePaths.current.set(created.id, uploadedPath)
-          try {
-            wardrobeStore.updateItem(created.id, { photoUrl: await signedPhotoUrl(uploadedPath) })
-          } catch {
-            wardrobeStore.updateItem(created.id, { photoUrl: item.photoUrl })
-          }
-          wardrobeStore.removeItem(item.id)
-          showToast('Pièce synchronisée en ligne.')
-        } catch (error) {
-          if (!isLikelyNetworkError(error)) {
-            console.warn('Unable to sync local wardrobe item:', error)
-          }
-        } finally {
-          syncingLocalItems.current.delete(item.id)
         }
-      })()
+
+        storagePaths.current.set(created.id, uploadedPath)
+        try {
+          wardrobeStore.updateItem(created.id, { photoUrl: await signedPhotoUrl(uploadedPath) })
+        } catch {
+          wardrobeStore.updateItem(created.id, { photoUrl: item.photoUrl })
+        }
+        wardrobeStore.removeItem(item.id)
+        syncedCount += 1
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        setSyncError(message)
+        console.warn('Unable to sync local wardrobe item:', error)
+      } finally {
+        syncingLocalItems.current.delete(item.id)
+      }
     }
+
+    if (syncedCount > 0) {
+      setToast(`${syncedCount} pièce${syncedCount > 1 ? 's' : ''} synchronisée${syncedCount > 1 ? 's' : ''} en ligne.`)
+    } else if (manual) {
+      setToast('La synchronisation a échoué. Ouvrez le profil pour voir le détail.')
+    }
+    if (manual) setManualSyncing(false)
+  }
+
+  useEffect(() => {
+    void syncLocalItemsNow(false)
   }, [authenticated, currentUserId, isOnline, state.items])
 
   useEffect(() => {
@@ -777,6 +803,7 @@ function App() {
   }, [category, visibleItems])
 
   const rediscoveryItems = sortByLeastRecentlyWorn(state.items).slice(0, 3)
+  const localOnlyCount = state.items.filter((item) => isLocalPhotoUrl(item.photoUrl)).length
 
   const showToast = (message: string) => {
     setToast(message)
@@ -1670,6 +1697,30 @@ function App() {
           <span><strong>{state.outfits.length}</strong> tenues portées</span>
           <span><strong>{stats.rotationScore}%</strong> en rotation</span>
         </div>
+        {supabase && (
+          <div className={syncError ? 'sync-card sync-card--error' : 'sync-card'}>
+            <span className="sync-card-icon">
+              {manualSyncing ? <RefreshCw size={19} className="spin" /> : <Upload size={19} />}
+            </span>
+            <div>
+              <strong>{localOnlyCount > 0 ? `${localOnlyCount} pièce${localOnlyCount > 1 ? 's' : ''} à synchroniser` : 'Dressing en ligne'}</strong>
+              <p>
+                {syncError
+                  ? syncError
+                  : localOnlyCount > 0
+                    ? 'Ces pièces sont visibles ici mais pas encore sur vos autres appareils.'
+                    : 'Les pièces cloud seront visibles sur téléphone et Mac avec le même compte.'}
+              </p>
+            </div>
+            <button
+              className="secondary-button"
+              onClick={() => void syncLocalItemsNow(true)}
+              disabled={manualSyncing || localOnlyCount === 0}
+            >
+              {manualSyncing ? 'Synchronisation…' : 'Synchroniser maintenant'}
+            </button>
+          </div>
+        )}
         <div className="install-card">
           <span className="install-card-icon"><Download size={22} /></span>
           <div>

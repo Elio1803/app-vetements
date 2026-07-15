@@ -92,7 +92,28 @@ export async function syncClothingItemToCloud(input: {
     photoPath: string
   }>('sync-clothing-item', { body: formData })
 
-  if (error) throw error
+  if (error) {
+    const context = (error as { context?: Response }).context
+    if (context) {
+      const response = context.clone()
+      const body = await response.json().catch(() => null) as unknown
+      if (
+        body &&
+        typeof body === 'object' &&
+        'error' in body &&
+        body.error &&
+        typeof body.error === 'object'
+      ) {
+        const edgeError = body.error as { code?: unknown; message?: unknown }
+        throw new Error(
+          `${typeof edgeError.code === 'string' ? edgeError.code : 'SYNC_FAILED'} · ${
+            typeof edgeError.message === 'string' ? edgeError.message : error.message
+          }`,
+        )
+      }
+    }
+    throw error
+  }
   if (!data?.item || typeof data.photoPath !== 'string') {
     throw new Error('Synchronisation cloud invalide.')
   }
