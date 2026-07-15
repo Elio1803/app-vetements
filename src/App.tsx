@@ -455,6 +455,7 @@ function App() {
   const [toast, setToast] = useState('')
   const [appEntering, setAppEntering] = useState(false)
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
+  const [cloudRefreshing, setCloudRefreshing] = useState(false)
   const [today, setToday] = useState(() => new Date())
   const [canInstall, setCanInstall] = useState(false)
   const [isInstalled, setIsInstalled] = useState(() => {
@@ -608,6 +609,55 @@ function App() {
       })()
     }
   }, [authenticated, currentUserId, isOnline, state.items])
+
+  useEffect(() => {
+    if (!supabase || !currentUserId || !authenticated) return undefined
+    const supabaseClient = supabase
+    let cancelled = false
+
+    const refreshCloudWardrobe = async () => {
+      if (!navigator.onLine || syncingLocalItems.current.size > 0) return
+      setCloudRefreshing(true)
+      try {
+        const pendingLocalItems = wardrobeStore.getSnapshot().items.filter((item) =>
+          isLocalPhotoUrl(item.photoUrl)
+        )
+        const { data } = await supabaseClient.auth.getUser()
+        if (cancelled || !data.user || data.user.id !== currentUserId) return
+        const paths = await loadRemoteWardrobe(data.user)
+        if (cancelled) return
+        storagePaths.current = paths
+        for (const item of pendingLocalItems) {
+          if (!wardrobeStore.getSnapshot().items.some((candidate) => candidate.id === item.id)) {
+            wardrobeStore.addItem({ ...item, userId: currentUserId })
+          }
+        }
+      } catch (error) {
+        if (!isLikelyNetworkError(error)) {
+          console.warn('Unable to refresh cloud wardrobe:', error)
+        }
+      } finally {
+        if (!cancelled) setCloudRefreshing(false)
+      }
+    }
+
+    const refreshWhenVisible = () => {
+      if (document.visibilityState === 'visible') void refreshCloudWardrobe()
+    }
+
+    window.addEventListener('focus', refreshWhenVisible)
+    window.addEventListener('online', refreshWhenVisible)
+    document.addEventListener('visibilitychange', refreshWhenVisible)
+    const interval = window.setInterval(() => void refreshCloudWardrobe(), 45_000)
+
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', refreshWhenVisible)
+      window.removeEventListener('online', refreshWhenVisible)
+      document.removeEventListener('visibilitychange', refreshWhenVisible)
+      window.clearInterval(interval)
+    }
+  }, [authenticated, currentUserId])
 
   useEffect(() => {
     if (bootLoading || authLoading || !authenticated || initialEntryPlayed.current) return
@@ -1554,7 +1604,14 @@ function App() {
       <Sheet open={accountOpen} onClose={() => setAccountOpen(false)} eyebrow="Votre compte" title={`Bonjour ${displayName}`}>
         <div className="account-card">
           <span className="account-avatar"><CircleUserRound size={29} /></span>
-          <div><strong>{currentEmail ?? 'Compte local'}</strong><small>{supabase ? 'Synchronisé avec Supabase' : 'Dressing privé sur cet appareil'}</small></div>
+          <div>
+            <strong>{currentEmail ?? 'Compte local'}</strong>
+            <small>
+              {cloudRefreshing
+                ? 'Synchronisation du dressing…'
+                : supabase ? 'Synchronisé avec Supabase' : 'Dressing privé sur cet appareil'}
+            </small>
+          </div>
         </div>
         <div className="account-stats">
           <span><strong>{state.items.length}</strong> pièces</span>
