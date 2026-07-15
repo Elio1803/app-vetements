@@ -11,9 +11,41 @@ interface OutfitBoardProps {
 export function OutfitBoard({ items, lookNumber, variant = 'outfit', generatedImageUrl }: OutfitBoardProps) {
   const bodyItems = [...items]
     .sort((left, right) => {
-      const order: ClothingItem['category'][] = ['bas', 'haut', 'veste_manteau', 'robe', 'chaussures', 'accessoire']
+      const order: ClothingItem['category'][] = ['veste_manteau', 'haut', 'robe', 'bas', 'chaussures', 'accessoire']
       return order.indexOf(left.category) - order.indexOf(right.category)
     })
+
+  if (variant === 'outfit') {
+    return (
+      <div
+        className="outfit-board outfit-board--outfit outfit-board--flatlay"
+        role="img"
+        aria-label={`Planche de la tenue ${lookNumber} : ${items.map((item) => item.name).join(', ')}`}
+      >
+        <span className="outfit-board-kicker">Look 0{lookNumber}</span>
+        {generatedImageUrl ? (
+          <img
+            className="outfit-board-generated"
+            src={generatedImageUrl}
+            alt=""
+            aria-hidden="true"
+          />
+        ) : (
+          <div className="flatlay-stage" aria-hidden="true">
+            {bodyItems.map((item, index) => (
+              <div
+                className={`flatlay-item flatlay-item--${item.category} flatlay-item--${index + 1}`}
+                key={`flatlay-${item.id}`}
+              >
+                <ClothingPhoto item={item} alt="" eager />
+              </div>
+            ))}
+          </div>
+        )}
+        <span className="outfit-board-script">le dressing</span>
+      </div>
+    )
+  }
 
   return (
     <div

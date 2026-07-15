@@ -451,8 +451,6 @@ function App() {
   const [toast, setToast] = useState('')
   const [appEntering, setAppEntering] = useState(false)
   const [isOnline, setIsOnline] = useState(() => navigator.onLine)
-  const [composingOutfitId, setComposingOutfitId] = useState<string | null>(null)
-  const [composedOutfitImages, setComposedOutfitImages] = useState<Record<string, string>>({})
   const [today, setToday] = useState(() => new Date())
   const [canInstall, setCanInstall] = useState(false)
   const [isInstalled, setIsInstalled] = useState(() => {
@@ -624,32 +622,6 @@ function App() {
       }
     } catch (error) {
       if ((error as DOMException).name !== 'AbortError') showToast('Partage indisponible pour le moment.')
-    }
-  }
-
-  const composeOutfitVisual = async (suggestion: OutfitSuggestion, items: ClothingItem[]) => {
-    if (composingOutfitId) return
-    if (!supabase || !currentUserId) {
-      showToast('Connectez-vous pour créer un rendu IA de la tenue.')
-      return
-    }
-    if (items.some((item) => /^(?:data:|blob:|\/assets\/)/i.test(item.photoUrl))) {
-      showToast('Le rendu IA nécessite des pièces synchronisées dans le cloud.')
-      return
-    }
-
-    setComposingOutfitId(suggestion.id)
-    try {
-      const result = await wardrobeApi.composeOutfit({ suggestion, items })
-      setComposedOutfitImages((current) => ({
-        ...current,
-        [suggestion.id]: result.imageUrl,
-      }))
-      showToast(result.message || 'Visuel IA créé pour cette tenue.')
-    } catch {
-      showToast('Le rendu IA n’est pas encore disponible. Vérifiez la clé FAL côté Supabase.')
-    } finally {
-      setComposingOutfitId(null)
     }
   }
 
@@ -1270,12 +1242,10 @@ function App() {
                           .map((id) => state.items.find((item) => item.id === id))
                           .filter((item): item is ClothingItem => Boolean(item))
                         const worn = state.outfits.some((outfit) => outfit.id === `worn-${suggestion.id}`)
-                        const composedImage = composedOutfitImages[suggestion.id]
-                        const isComposingThisOutfit = composingOutfitId === suggestion.id
                         return (
                           <article className="outfit-card" key={suggestion.id}>
                             <div className="outfit-number">0{index + 1}</div>
-                            <OutfitBoard items={items} lookNumber={index + 1} generatedImageUrl={composedImage} />
+                            <OutfitBoard items={items} lookNumber={index + 1} />
                             <div className="outfit-card-body">
                               <div className="outfit-title-row">
                                 <div>
@@ -1294,15 +1264,6 @@ function App() {
                                 disabled={worn}
                               >
                                 <Check size={17} /> {worn ? 'Portée aujourd’hui' : 'Porter aujourd’hui'}
-                              </button>
-                              <button
-                                className="try-on-button"
-                                onClick={() => composeOutfitVisual(suggestion, items)}
-                                disabled={isComposingThisOutfit || Boolean(composingOutfitId)}
-                                aria-busy={isComposingThisOutfit}
-                              >
-                                {isComposingThisOutfit ? <RefreshCw className="spin" size={16} /> : <WandSparkles size={16} />}
-                                {composedImage ? 'Régénérer le visuel IA' : 'Créer le visuel IA'}
                               </button>
                               <button className="share-button" onClick={() => shareOutfit(suggestion, items)}>
                                 <Share2 size={16} /> Partager la tenue
