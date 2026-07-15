@@ -11,6 +11,9 @@ verify_jwt = false
 [functions.compose-outfit]
 verify_jwt = false
 
+[functions.sync-clothing-item]
+verify_jwt = false
+
 [functions.remove-background]
 verify_jwt = false
 

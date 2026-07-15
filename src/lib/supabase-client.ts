@@ -1,7 +1,8 @@
 import { createClient, type User } from '@supabase/supabase-js'
-import type { ClothingItem } from '../types'
+import type { ClothingCategory, ClothingItem } from '../types'
 import { wardrobeApi } from './wardrobe-api'
 import { wardrobeStore } from './wardrobe-store'
+import { normalizeClothingItem } from './storage'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
@@ -68,6 +69,36 @@ export async function uploadClothingPhoto(dataUrl: string, userId: string) {
   })
   if (error) throw error
   return path
+}
+
+export async function syncClothingItemToCloud(input: {
+  dataUrl: string
+  userId: string
+  category: ClothingCategory
+  name?: string | null
+  colorDominant?: string | null
+}) {
+  if (!supabase) throw new Error('Supabase n’est pas configuré.')
+  const response = await fetch(input.dataUrl)
+  const blob = await response.blob()
+  const formData = new FormData()
+  formData.append('image', blob, 'vetement.jpg')
+  formData.append('category', input.category)
+  if (input.name?.trim()) formData.append('name', input.name.trim())
+  if (input.colorDominant?.trim()) formData.append('colorDominant', input.colorDominant.trim())
+
+  const { data, error } = await supabase.functions.invoke<{
+    item: unknown
+    photoPath: string
+  }>('sync-clothing-item', { body: formData })
+
+  if (error) throw error
+  if (!data?.item || typeof data.photoPath !== 'string') {
+    throw new Error('Synchronisation cloud invalide.')
+  }
+  const item = normalizeClothingItem(data.item, input.userId)
+  if (!item) throw new Error('Pièce cloud invalide.')
+  return { item, photoPath: data.photoPath }
 }
 
 export async function signedPhotoUrl(path: string) {

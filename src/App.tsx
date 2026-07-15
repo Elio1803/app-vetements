@@ -66,7 +66,7 @@ import {
   sendWelcomeEmail,
   signedPhotoUrl,
   supabase,
-  uploadClothingPhoto,
+  syncClothingItemToCloud,
 } from './lib/supabase-client'
 import {
   CLOTHING_CATEGORIES,
@@ -570,17 +570,17 @@ function App() {
     for (const item of pendingItems) {
       syncingLocalItems.current.add(item.id)
       void (async () => {
-        let uploadedPath: string | null = null
         try {
-          uploadedPath = await uploadClothingPhoto(item.photoUrl, currentUserId)
-          const created = await wardrobeApi.createItem({
+          const synced = await syncClothingItemToCloud({
+            dataUrl: item.photoUrl,
             userId: currentUserId,
-            photoUrl: uploadedPath,
             category: item.category,
             name: item.name,
             colorDominant: item.colorDominant,
           })
-          if (wardrobeApi.lastRemoteError) throw wardrobeApi.lastRemoteError
+          const uploadedPath = synced.photoPath
+          const created = synced.item
+          wardrobeStore.addItem(created)
 
           const analysis = await wardrobeApi.analyzeClothing(uploadedPath, item.category)
           if (!wardrobeApi.lastRemoteError) {
@@ -599,9 +599,6 @@ function App() {
           wardrobeStore.removeItem(item.id)
           showToast('Pièce synchronisée en ligne.')
         } catch (error) {
-          if (uploadedPath && supabase) {
-            await supabase.storage.from('clothing-photos').remove([uploadedPath]).catch(() => undefined)
-          }
           if (!isLikelyNetworkError(error)) {
             console.warn('Unable to sync local wardrobe item:', error)
           }
@@ -816,7 +813,6 @@ function App() {
 
     setSavingItem(true)
     setAddError('')
-    let uploadedPath: string | null = null
     try {
       if (!isOnline && supabase && currentUserId) {
         addLocalFallbackItem()
@@ -825,18 +821,15 @@ function App() {
       }
 
       if (supabase && currentUserId) {
-        uploadedPath = await uploadClothingPhoto(photoData, currentUserId)
-        const created = await wardrobeApi.createItem({
+        const synced = await syncClothingItemToCloud({
+          dataUrl: photoData,
           userId: currentUserId,
-          photoUrl: uploadedPath,
           category: addCategory,
           name: addName.trim() || null,
           colorDominant: null,
         })
-        if (wardrobeApi.lastRemoteError) {
-          wardrobeStore.removeItem(created.id)
-          throw wardrobeApi.lastRemoteError
-        }
+        const uploadedPath = synced.photoPath
+        const created = wardrobeStore.addItem(synced.item)
 
         const analysis = await wardrobeApi.analyzeClothing(uploadedPath, addCategory)
         const analysisSucceeded = !wardrobeApi.lastRemoteError
@@ -873,9 +866,6 @@ function App() {
         showToast('Pièce ajoutée à votre dressing.')
       }
     } catch (error) {
-      if (uploadedPath && supabase) {
-        await supabase.storage.from('clothing-photos').remove([uploadedPath])
-      }
       addLocalFallbackItem()
       showToast(
         isLikelyNetworkError(error)
