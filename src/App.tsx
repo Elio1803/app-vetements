@@ -495,15 +495,19 @@ function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenProps) {
 
 function PasswordRecoveryScreen({
   onSave,
+  onContinue,
   onCancel,
 }: {
   onSave: (password: string) => Promise<string | null>
+  onContinue: () => void
   onCancel: () => Promise<void>
 }) {
+  const shouldReduceMotion = useReducedMotion()
   const [password, setPassword] = useState('')
   const [confirmation, setConfirmation] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
+  const [saved, setSaved] = useState(false)
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
@@ -515,6 +519,7 @@ function PasswordRecoveryScreen({
     setError('')
     const message = await onSave(password)
     if (message) setError(message)
+    else setSaved(true)
     setBusy(false)
   }
 
@@ -535,44 +540,91 @@ function PasswordRecoveryScreen({
       <section className="auth-form-wrap">
         <div className="auth-form-card">
           <div className="auth-mobile-brand"><BrandMark /></div>
-          <p className="eyebrow">Sécurité du compte</p>
-          <h2>Créer un nouveau mot de passe</h2>
-          <p className="auth-intro">Cette étape est nécessaire avant de retrouver votre dressing.</p>
+          <AnimatePresence mode="wait">
+            {saved ? (
+              <motion.div
+                key="recovery-success"
+                className="recovery-success"
+                initial={shouldReduceMotion ? false : { opacity: 0, y: 20, scale: 0.94 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={TRANSITIONS.spring}
+              >
+                <motion.div
+                  className="recovery-success-check"
+                  initial={shouldReduceMotion ? false : { scale: 0, rotate: -18 }}
+                  animate={{ scale: 1, rotate: 0 }}
+                  transition={shouldReduceMotion ? { duration: 0 } : { type: 'spring', stiffness: 260, damping: 16, delay: 0.12 }}
+                  aria-hidden="true"
+                >
+                  <motion.span
+                    initial={shouldReduceMotion ? false : { scale: 0.5, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: shouldReduceMotion ? 0 : 0.28, duration: 0.25 }}
+                  >
+                    <Check size={58} strokeWidth={2.6} />
+                  </motion.span>
+                </motion.div>
+                <p className="eyebrow recovery-success-eyebrow">C’est terminé</p>
+                <h2>Mot de passe réinitialisé avec succès</h2>
+                <p className="auth-intro">Votre compte est sécurisé. Vous pouvez maintenant retourner dans votre dressing.</p>
+                <motion.button
+                  className="primary-button auth-submit recovery-success-button"
+                  type="button"
+                  onClick={onContinue}
+                  whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
+                >
+                  Retourner dans l’application
+                  <ChevronRight size={18} />
+                </motion.button>
+              </motion.div>
+            ) : (
+              <motion.div
+                key="recovery-form"
+                initial={false}
+                exit={shouldReduceMotion ? undefined : { opacity: 0, y: -14 }}
+                transition={TRANSITIONS.micro}
+              >
+                <p className="eyebrow">Sécurité du compte</p>
+                <h2>Créer un nouveau mot de passe</h2>
+                <p className="auth-intro">Cette étape est nécessaire avant de retrouver votre dressing.</p>
 
-          <form onSubmit={submit}>
-            <label className="field-label" htmlFor="new-password">Nouveau mot de passe</label>
-            <input
-              className="text-field"
-              id="new-password"
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="8 caractères minimum"
-              minLength={8}
-              autoComplete="new-password"
-              required
-            />
-            <label className="field-label password-confirm-label" htmlFor="confirm-password">Confirmer le mot de passe</label>
-            <input
-              className="text-field"
-              id="confirm-password"
-              type="password"
-              value={confirmation}
-              onChange={(event) => setConfirmation(event.target.value)}
-              placeholder="Saisissez-le une seconde fois"
-              minLength={8}
-              autoComplete="new-password"
-              required
-            />
-            <button className="primary-button auth-submit" type="submit" disabled={busy} aria-busy={busy}>
-              {busy ? 'Enregistrement…' : 'Enregistrer le nouveau mot de passe'}
-              {!busy && <ChevronRight size={18} />}
-            </button>
-          </form>
-          {error && <p className="form-error auth-error" role="alert">{error}</p>}
-          <button className="text-link recovery-cancel" type="button" onClick={() => void onCancel()} disabled={busy}>
-            Annuler et revenir à la connexion
-          </button>
+                <form onSubmit={submit}>
+                  <label className="field-label" htmlFor="new-password">Nouveau mot de passe</label>
+                  <input
+                    className="text-field"
+                    id="new-password"
+                    type="password"
+                    value={password}
+                    onChange={(event) => setPassword(event.target.value)}
+                    placeholder="8 caractères minimum"
+                    minLength={8}
+                    autoComplete="new-password"
+                    required
+                  />
+                  <label className="field-label password-confirm-label" htmlFor="confirm-password">Confirmer le mot de passe</label>
+                  <input
+                    className="text-field"
+                    id="confirm-password"
+                    type="password"
+                    value={confirmation}
+                    onChange={(event) => setConfirmation(event.target.value)}
+                    placeholder="Saisissez-le une seconde fois"
+                    minLength={8}
+                    autoComplete="new-password"
+                    required
+                  />
+                  <button className="primary-button auth-submit" type="submit" disabled={busy} aria-busy={busy}>
+                    {busy ? 'Enregistrement…' : 'Enregistrer le nouveau mot de passe'}
+                    {!busy && <ChevronRight size={18} />}
+                  </button>
+                </form>
+                {error && <p className="form-error auth-error" role="alert">{error}</p>}
+                <button className="text-link recovery-cancel" type="button" onClick={() => void onCancel()} disabled={busy}>
+                  Annuler et revenir à la connexion
+                </button>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </section>
     </main>
@@ -1330,12 +1382,15 @@ function App() {
         ? 'Choisissez un mot de passe différent de l’ancien.'
         : 'Impossible d’enregistrer ce mot de passe. Demandez un nouveau lien de réinitialisation.'
     }
+    window.history.replaceState({}, document.title, new URL(import.meta.env.BASE_URL || '/', window.location.origin).href)
+    return null
+  }
+
+  const finishPasswordRecovery = () => {
     rememberPasswordRecovery(false)
     setPasswordRecovery(false)
-    window.history.replaceState({}, document.title, new URL(import.meta.env.BASE_URL || '/', window.location.origin).href)
     setAppEntering(true)
     showToast('Votre nouveau mot de passe est enregistré.')
-    return null
   }
 
   const signInWithGoogle = async () => {
@@ -1370,7 +1425,7 @@ function App() {
   if (authLoading) return <LoadingScreen persistent />
 
   if (passwordRecovery && authenticated) {
-    return <PasswordRecoveryScreen onSave={saveRecoveredPassword} onCancel={signOut} />
+    return <PasswordRecoveryScreen onSave={saveRecoveredPassword} onContinue={finishPasswordRecovery} onCancel={signOut} />
   }
 
   if (!authenticated) {

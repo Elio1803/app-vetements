@@ -2629,6 +2629,24 @@ select {
 .auth-error { margin-bottom: 0; }
 .password-confirm-label { margin-top: 18px; }
 .recovery-cancel { display: block; margin: 22px auto 0; border: 0; }
+.recovery-success { text-align: center; }
+.recovery-success-check {
+  display: grid;
+  width: 112px;
+  height: 112px;
+  margin: 0 auto 26px;
+  place-items: center;
+  border: 1px solid color-mix(in srgb, #2c9c60 42%, transparent);
+  border-radius: 50%;
+  background: linear-gradient(145deg, #3fbd75, #238f56);
+  color: #fff;
+  box-shadow: 0 18px 45px rgba(35, 143, 86, .28), 0 0 0 12px rgba(63, 189, 117, .09);
+}
+.recovery-success-check span { display: grid; place-items: center; }
+.recovery-success-eyebrow { color: #238f56; }
+.recovery-success h2 { max-width: 390px; margin-inline: auto; }
+.recovery-success .auth-intro { max-width: 360px; margin-inline: auto; line-height: 1.65; }
+.recovery-success-button { margin-top: 28px; }
 
 @media (min-width: 1450px) {
   .clothing-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
