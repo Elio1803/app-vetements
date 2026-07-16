@@ -95,6 +95,8 @@ type AppView = 'wardrobe' | 'generate'
 type SortMode = 'rotation' | 'recent' | 'worn'
 type CategoryFilter = ClothingCategory | 'all'
 
+const PASSWORD_RECOVERY_KEY = 'le-dressing:password-recovery'
+
 const GARMENT_FOCUS_OPTIONS: Record<ClothingCategory, Array<{ value: GarmentFocus; label: string }>> = {
   haut: [
     { value: 'crop_top', label: 'Crop top' },
@@ -191,6 +193,26 @@ function authRedirectUrl() {
   if (publicAppUrl) return new URL(publicAppUrl).href
   const baseUrl = import.meta.env.BASE_URL || '/'
   return new URL(baseUrl, window.location.origin).href
+}
+
+function hasPasswordRecoveryPending() {
+  if (typeof window === 'undefined') return false
+  const callbackParams = `${window.location.search}&${window.location.hash}`
+  if (/(?:^|[&#?])type=recovery(?:&|$)/i.test(callbackParams)) return true
+  try {
+    return window.localStorage.getItem(PASSWORD_RECOVERY_KEY) === '1'
+  } catch {
+    return false
+  }
+}
+
+function rememberPasswordRecovery(pending: boolean) {
+  try {
+    if (pending) window.localStorage.setItem(PASSWORD_RECOVERY_KEY, '1')
+    else window.localStorage.removeItem(PASSWORD_RECOVERY_KEY)
+  } catch {
+    // Private browsing can block storage; the current React state still protects the flow.
+  }
 }
 
 async function authErrorMessage(error: { message?: string } | null, email: string) {
@@ -471,6 +493,92 @@ function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenProps) {
   )
 }
 
+function PasswordRecoveryScreen({
+  onSave,
+  onCancel,
+}: {
+  onSave: (password: string) => Promise<string | null>
+  onCancel: () => Promise<void>
+}) {
+  const [password, setPassword] = useState('')
+  const [confirmation, setConfirmation] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState('')
+
+  const submit = async (event: FormEvent) => {
+    event.preventDefault()
+    if (password !== confirmation) {
+      setError('Les deux mots de passe ne correspondent pas.')
+      return
+    }
+    setBusy(true)
+    setError('')
+    const message = await onSave(password)
+    if (message) setError(message)
+    setBusy(false)
+  }
+
+  return (
+    <main className="auth-shell">
+      <section className="auth-editorial" aria-label="Présentation">
+        <BrandMark inverse />
+        <div className="auth-quote">
+          <p className="eyebrow eyebrow--light">Votre compte, bien protégé</p>
+          <h1>
+            Un nouveau mot de passe.<br />
+            <em>Votre dressing vous attend.</em>
+          </h1>
+          <p>Choisissez un mot de passe personnel d’au moins huit caractères.</p>
+        </div>
+      </section>
+
+      <section className="auth-form-wrap">
+        <div className="auth-form-card">
+          <div className="auth-mobile-brand"><BrandMark /></div>
+          <p className="eyebrow">Sécurité du compte</p>
+          <h2>Créer un nouveau mot de passe</h2>
+          <p className="auth-intro">Cette étape est nécessaire avant de retrouver votre dressing.</p>
+
+          <form onSubmit={submit}>
+            <label className="field-label" htmlFor="new-password">Nouveau mot de passe</label>
+            <input
+              className="text-field"
+              id="new-password"
+              type="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="8 caractères minimum"
+              minLength={8}
+              autoComplete="new-password"
+              required
+            />
+            <label className="field-label password-confirm-label" htmlFor="confirm-password">Confirmer le mot de passe</label>
+            <input
+              className="text-field"
+              id="confirm-password"
+              type="password"
+              value={confirmation}
+              onChange={(event) => setConfirmation(event.target.value)}
+              placeholder="Saisissez-le une seconde fois"
+              minLength={8}
+              autoComplete="new-password"
+              required
+            />
+            <button className="primary-button auth-submit" type="submit" disabled={busy} aria-busy={busy}>
+              {busy ? 'Enregistrement…' : 'Enregistrer le nouveau mot de passe'}
+              {!busy && <ChevronRight size={18} />}
+            </button>
+          </form>
+          {error && <p className="form-error auth-error" role="alert">{error}</p>}
+          <button className="text-link recovery-cancel" type="button" onClick={() => void onCancel()} disabled={busy}>
+            Annuler et revenir à la connexion
+          </button>
+        </div>
+      </section>
+    </main>
+  )
+}
+
 function ClothingCard({ item, onOpen }: { item: ClothingItem; onOpen: () => void }) {
   const status = itemStatus(item)
   const shouldReduceMotion = useReducedMotion()
@@ -514,6 +622,7 @@ function App() {
   const initialLocalSession = getLocalSession()
   const [authenticated, setAuthenticated] = useState(() => !isSupabaseConfigured && Boolean(initialLocalSession))
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured)
+  const [passwordRecovery, setPasswordRecovery] = useState(hasPasswordRecoveryPending)
   const [bootLoading, setBootLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => initialLocalSession?.userId ?? null)
   const [currentEmail, setCurrentEmail] = useState<string | null>(() => initialLocalSession?.email ?? null)
@@ -613,7 +722,11 @@ function App() {
     }
 
     void supabaseClient.auth.getSession().then(({ data }) => applySession(data.session?.user.id ?? null))
-    const { data: subscription } = supabaseClient.auth.onAuthStateChange((_event, session) => {
+    const { data: subscription } = supabaseClient.auth.onAuthStateChange((event, session) => {
+      if (event === 'PASSWORD_RECOVERY') {
+        rememberPasswordRecovery(true)
+        setPasswordRecovery(true)
+      }
       void applySession(session?.user.id ?? null)
     })
 
@@ -1158,6 +1271,8 @@ function App() {
   }
 
   const signOut = async () => {
+    rememberPasswordRecovery(false)
+    setPasswordRecovery(false)
     if (supabase) await supabase.auth.signOut()
     else {
       signOutLocalAccount()
@@ -1200,7 +1315,26 @@ function App() {
     if (createAccount && !result.data.session) {
       return 'Compte créé. Ouvrez le lien reçu par e-mail pour finaliser votre inscription.'
     }
+    rememberPasswordRecovery(false)
+    setPasswordRecovery(false)
     setAppEntering(true)
+    return null
+  }
+
+  const saveRecoveredPassword = async (password: string) => {
+    if (!supabase) return 'La réinitialisation en ligne est indisponible.'
+    if (password.length < 8) return 'Le mot de passe doit contenir au moins huit caractères.'
+    const { error } = await supabase.auth.updateUser({ password })
+    if (error) {
+      return /same password/i.test(error.message)
+        ? 'Choisissez un mot de passe différent de l’ancien.'
+        : 'Impossible d’enregistrer ce mot de passe. Demandez un nouveau lien de réinitialisation.'
+    }
+    rememberPasswordRecovery(false)
+    setPasswordRecovery(false)
+    window.history.replaceState({}, document.title, new URL(import.meta.env.BASE_URL || '/', window.location.origin).href)
+    setAppEntering(true)
+    showToast('Votre nouveau mot de passe est enregistré.')
     return null
   }
 
@@ -1234,6 +1368,10 @@ function App() {
   if (bootLoading) return <LoadingScreen onFinish={() => setBootLoading(false)} />
 
   if (authLoading) return <LoadingScreen persistent />
+
+  if (passwordRecovery && authenticated) {
+    return <PasswordRecoveryScreen onSave={saveRecoveredPassword} onCancel={signOut} />
+  }
 
   if (!authenticated) {
     return <LoginScreen onLogin={signIn} onGoogle={signInWithGoogle} onResetPassword={resetPassword} />

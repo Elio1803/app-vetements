@@ -2627,6 +2627,8 @@ select {
 .google-g { font-family: Arial, sans-serif; color: #4068c9; font-weight: 700; }
 .demo-note { margin: 18px 0 0; color: #948d83; font-size: .56rem; line-height: 1.5; text-align: center; }
 .auth-error { margin-bottom: 0; }
+.password-confirm-label { margin-top: 18px; }
+.recovery-cancel { display: block; margin: 22px auto 0; border: 0; }
 
 @media (min-width: 1450px) {
   .clothing-grid { grid-template-columns: repeat(5, minmax(0, 1fr)); }
