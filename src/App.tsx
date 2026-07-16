@@ -186,6 +186,9 @@ function fileAsDataUrl(file: File): Promise<string> {
 }
 
 function authRedirectUrl() {
+  const publicAppUrl = import.meta.env.VITE_PUBLIC_APP_URL?.trim()
+    || 'https://elio1803.github.io/app-vetements/'
+  if (publicAppUrl) return new URL(publicAppUrl).href
   const baseUrl = import.meta.env.BASE_URL || '/'
   return new URL(baseUrl, window.location.origin).href
 }
