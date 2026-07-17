@@ -108,7 +108,7 @@ import {
   type WeatherContext,
 } from './types'
 
-type AppView = 'wardrobe' | 'generate' | 'history'
+type AppView = 'wardrobe' | 'generate' | 'history' | 'profile'
 type SortMode = 'rotation' | 'recent' | 'worn'
 type CategoryFilter = ClothingCategory | 'all'
 
@@ -452,7 +452,6 @@ function App() {
   const [sortMode, setSortMode] = useState<SortMode>('rotation')
   const [query, setQuery] = useState('')
   const [addOpen, setAddOpen] = useState(false)
-  const [accountOpen, setAccountOpen] = useState(false)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [editItem, setEditItem] = useState(false)
   const [editName, setEditName] = useState('')
@@ -1051,15 +1050,14 @@ function App() {
     setCurrentUserId(null)
     setCurrentEmail(null)
     setCurrentProfileName('')
-    setAccountOpen(false)
     setAppEntering(false)
     setAuthenticated(false)
   }
 
-  const openAccount = () => {
+  const openProfile = () => {
     setProfileNameDraft(currentProfileName || profileNameFromEmail(currentEmail))
     setProfileNameError('')
-    setAccountOpen(true)
+    setView('profile')
   }
 
   const saveProfileName = async () => {
@@ -1226,7 +1224,7 @@ function App() {
           <p>Laissez-les inspirer votre prochaine tenue.</p>
           <button onClick={() => setView('generate')}>Composer <ChevronRight size={15} /></button>
         </div>
-        <button className="user-row" onClick={openAccount}>
+        <button className={view === 'profile' ? 'user-row is-active' : 'user-row'} onClick={openProfile}>
           <span className="user-avatar">{displayInitials}</span>
           <span><strong>{displayName}</strong><small>{supabase ? 'Compte synchronisé' : 'Compte local privé'}</small></span>
           <ChevronRight size={17} />
@@ -1636,7 +1634,7 @@ function App() {
               </section>
             </div>
           </motion.div>
-        ) : (
+        ) : view === 'history' ? (
           <motion.div
             key="history"
             className="page-content history-page"
@@ -1659,6 +1657,111 @@ function App() {
             </header>
             <OutfitHistory outfits={state.outfits} items={state.items} />
           </motion.div>
+        ) : (
+          <motion.div
+            key="profile"
+            className="page-content profile-page"
+            variants={shouldReduceMotion ? undefined : screenVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={TRANSITIONS.screen}
+          >
+            <header className="page-heading profile-heading">
+              <div>
+                <p className="eyebrow">Votre espace personnel</p>
+                <h1>Profil</h1>
+                <p className="heading-script">Le dressing de {displayName}</p>
+              </div>
+            </header>
+            <section className="profile-layout">
+              <div className="profile-primary">
+                <div className="account-card">
+                  <span className="account-avatar"><CircleUserRound size={29} /></span>
+                  <div>
+                    <strong>{displayName}</strong>
+                    <small>{currentEmail ?? 'Compte local'}</small>
+                    <small>
+                      {cloudRefreshing
+                        ? 'Synchronisation du dressing…'
+                        : supabase ? 'Synchronisé avec Supabase' : 'Dressing privé sur cet appareil'}
+                    </small>
+                  </div>
+                </div>
+                <div className="account-stats">
+                  <span><strong><AnimatedCounter value={state.items.length} /></strong> pièces</span>
+                  <span><strong><AnimatedCounter value={state.outfits.length} /></strong> tenues portées</span>
+                  <span><strong><AnimatedCounter value={stats.rotationScore} suffix="%" /></strong> en rotation</span>
+                </div>
+                <form className="profile-editor-card" onSubmit={(event) => { event.preventDefault(); void saveProfileName() }}>
+                  <div>
+                    <label className="field-label" htmlFor="dressing-profile-name">Le dressing de qui&nbsp;?</label>
+                    <p>Indiquez votre prénom ou votre nom. Il vous suivra sur tous vos appareils.</p>
+                  </div>
+                  <div className="profile-editor-actions">
+                    <input
+                      className="text-field"
+                      id="dressing-profile-name"
+                      type="text"
+                      value={profileNameDraft}
+                      onChange={(event) => setProfileNameDraft(event.target.value)}
+                      maxLength={PROFILE_NAME_MAX_LENGTH}
+                      placeholder="Ex. Élise"
+                      autoComplete="name"
+                      required
+                    />
+                    <button className="primary-button" type="submit" disabled={profileNameSaving || normalizeProfileName(profileNameDraft) === displayName}>
+                      <Check size={17} /> {profileNameSaving ? 'Enregistrement…' : 'Enregistrer'}
+                    </button>
+                  </div>
+                  {profileNameError && <p className="form-error" role="alert">{profileNameError}</p>}
+                </form>
+                <button className="history-open-card" type="button" onClick={() => setView('history')}>
+                  <span><CalendarDays size={23} /></span>
+                  <div>
+                    <strong>Historique des tenues</strong>
+                    <p>Retrouvez dans le calendrier ce que vous avez porté chaque jour.</p>
+                  </div>
+                  <ChevronRight size={18} />
+                </button>
+              </div>
+              <div className="profile-secondary">
+                {supabase && (
+                  <div className={syncError ? 'sync-card sync-card--error' : 'sync-card'}>
+                    <span className="sync-card-icon">
+                      {manualSyncing ? <RefreshCw size={19} className="spin" /> : <Upload size={19} />}
+                    </span>
+                    <div>
+                      <strong>{localOnlyCount > 0 ? `${localOnlyCount} pièce${localOnlyCount > 1 ? 's' : ''} à synchroniser` : 'Dressing en ligne'}</strong>
+                      <p>
+                        {syncError
+                          ? syncError
+                          : localOnlyCount > 0
+                            ? 'Ces pièces sont visibles ici mais pas encore sur vos autres appareils.'
+                            : 'Les pièces cloud sont visibles sur téléphone et Mac avec le même compte.'}
+                      </p>
+                    </div>
+                    <button className="secondary-button" onClick={() => void syncLocalItemsNow(true)} disabled={manualSyncing || localOnlyCount === 0}>
+                      {manualSyncing ? 'Synchronisation…' : 'Synchroniser maintenant'}
+                    </button>
+                  </div>
+                )}
+                <div className="install-card">
+                  <span className="install-card-icon"><Download size={22} /></span>
+                  <div>
+                    <strong>{isInstalled ? 'Application installée' : 'Installer Le Dressing'}</strong>
+                    <p>{isInstalled ? 'Elle est disponible depuis votre écran d’accueil.' : 'Ajoutez-la à votre téléphone et utilisez-la comme une vraie application.'}</p>
+                  </div>
+                  {!isInstalled && (
+                    <button className="secondary-button" onClick={installApplication}>
+                      {canInstall ? 'Installer' : 'Voir comment'}
+                    </button>
+                  )}
+                </div>
+                <button className="danger-button full-button" onClick={signOut}><LogOut size={17} /> Se déconnecter</button>
+              </div>
+            </section>
+          </motion.div>
         )}
         </AnimatePresence>
       </main>
@@ -1680,7 +1783,7 @@ function App() {
         >
           <CalendarDays size={20} /><span>Historique</span>
         </button>
-        <button className={accountOpen ? 'is-active' : ''} onClick={openAccount} aria-label="Ouvrir le profil">
+        <button className={view === 'profile' ? 'is-active' : ''} onClick={openProfile} aria-label="Ouvrir le profil">
           <CircleUserRound size={20} /><span>Profil</span>
         </button>
       </nav>
@@ -1872,101 +1975,6 @@ function App() {
             <p>Les {wearCandidate.itemIds.length} pièces de <strong>{wearCandidate.name}</strong> seront mises à jour. Cette action ne sera comptée qu’une fois.</p>
           </div>
         )}
-      </Sheet>
-
-      <Sheet open={accountOpen} onClose={() => setAccountOpen(false)} eyebrow="Votre compte" title={`Bonjour ${displayName}`} entrance="profile">
-        <div className="account-card">
-          <span className="account-avatar"><CircleUserRound size={29} /></span>
-          <div>
-            <strong>{displayName}</strong>
-            <small>{currentEmail ?? 'Compte local'}</small>
-            <small>
-              {cloudRefreshing
-                ? 'Synchronisation du dressing…'
-                : supabase ? 'Synchronisé avec Supabase' : 'Dressing privé sur cet appareil'}
-            </small>
-          </div>
-        </div>
-        <div className="account-stats">
-          <span><strong><AnimatedCounter value={state.items.length} /></strong> pièces</span>
-          <span><strong><AnimatedCounter value={state.outfits.length} /></strong> tenues portées</span>
-          <span><strong><AnimatedCounter value={stats.rotationScore} suffix="%" /></strong> en rotation</span>
-        </div>
-        <form className="profile-editor-card" onSubmit={(event) => { event.preventDefault(); void saveProfileName() }}>
-          <div>
-            <label className="field-label" htmlFor="dressing-profile-name">Le dressing de qui&nbsp;?</label>
-            <p>Indiquez votre prénom ou votre nom. Il vous suivra sur tous vos appareils.</p>
-          </div>
-          <div className="profile-editor-actions">
-            <input
-              className="text-field"
-              id="dressing-profile-name"
-              type="text"
-              value={profileNameDraft}
-              onChange={(event) => setProfileNameDraft(event.target.value)}
-              maxLength={PROFILE_NAME_MAX_LENGTH}
-              placeholder="Ex. Élise"
-              autoComplete="name"
-              required
-            />
-            <button className="primary-button" type="submit" disabled={profileNameSaving || normalizeProfileName(profileNameDraft) === displayName}>
-              <Check size={17} /> {profileNameSaving ? 'Enregistrement…' : 'Enregistrer'}
-            </button>
-          </div>
-          {profileNameError && <p className="form-error" role="alert">{profileNameError}</p>}
-        </form>
-        <button
-          className="history-open-card"
-          type="button"
-          onClick={() => {
-            setAccountOpen(false)
-            setView('history')
-          }}
-        >
-          <span><CalendarDays size={23} /></span>
-          <div>
-            <strong>Historique des tenues</strong>
-            <p>Retrouvez dans le calendrier ce que vous avez porté chaque jour.</p>
-          </div>
-          <ChevronRight size={18} />
-        </button>
-        {supabase && (
-          <div className={syncError ? 'sync-card sync-card--error' : 'sync-card'}>
-            <span className="sync-card-icon">
-              {manualSyncing ? <RefreshCw size={19} className="spin" /> : <Upload size={19} />}
-            </span>
-            <div>
-              <strong>{localOnlyCount > 0 ? `${localOnlyCount} pièce${localOnlyCount > 1 ? 's' : ''} à synchroniser` : 'Dressing en ligne'}</strong>
-              <p>
-                {syncError
-                  ? syncError
-                  : localOnlyCount > 0
-                    ? 'Ces pièces sont visibles ici mais pas encore sur vos autres appareils.'
-                    : 'Les pièces cloud seront visibles sur téléphone et Mac avec le même compte.'}
-              </p>
-            </div>
-            <button
-              className="secondary-button"
-              onClick={() => void syncLocalItemsNow(true)}
-              disabled={manualSyncing || localOnlyCount === 0}
-            >
-              {manualSyncing ? 'Synchronisation…' : 'Synchroniser maintenant'}
-            </button>
-          </div>
-        )}
-        <div className="install-card">
-          <span className="install-card-icon"><Download size={22} /></span>
-          <div>
-            <strong>{isInstalled ? 'Application installée' : 'Installer Le Dressing'}</strong>
-            <p>{isInstalled ? 'Elle est disponible depuis votre écran d’accueil.' : 'Ajoutez-la à votre téléphone et utilisez-la comme une vraie application.'}</p>
-          </div>
-          {!isInstalled && (
-            <button className="secondary-button" onClick={installApplication}>
-              {canInstall ? 'Installer' : 'Voir comment'}
-            </button>
-          )}
-        </div>
-        <button className="danger-button full-button" onClick={signOut}><LogOut size={17} /> Se déconnecter</button>
       </Sheet>
 
       <AnimatePresence>

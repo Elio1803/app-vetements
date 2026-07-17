@@ -577,6 +577,8 @@ select {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.user-row.is-active { color: var(--ink); }
+.user-row.is-active .user-avatar { background: var(--ink); color: var(--paper); }
 
 .app-main {
   min-height: 100vh;
@@ -2094,19 +2096,6 @@ select {
 }
 
 .sheet-panel--wide { width: min(650px, 100%); }
-.sheet-panel--profile {
-  transform-origin: 100% 50%;
-  animation: profile-panel-enter-side 500ms cubic-bezier(.16, 1, .3, 1);
-}
-.sheet-panel--profile .sheet-body { animation: none; }
-.sheet-panel--profile .sheet-body > * { animation: profile-item-enter 280ms cubic-bezier(.22, 1, .36, 1) both; }
-.sheet-panel--profile .sheet-body > :nth-child(1) { animation-delay: 90ms; }
-.sheet-panel--profile .sheet-body > :nth-child(2) { animation-delay: 120ms; }
-.sheet-panel--profile .sheet-body > :nth-child(3) { animation-delay: 150ms; }
-.sheet-panel--profile .sheet-body > :nth-child(4) { animation-delay: 180ms; }
-.sheet-panel--profile .sheet-body > :nth-child(5) { animation-delay: 210ms; }
-.sheet-panel--profile .sheet-body > :nth-child(n + 6) { animation-delay: 240ms; }
-.sheet-panel--profile .account-avatar { animation: profile-avatar-pop 420ms 165ms cubic-bezier(.16, 1, .3, 1) both; }
 
 @keyframes sheet-backdrop-enter {
   from { opacity: 0; }
@@ -2123,30 +2112,6 @@ select {
   to { transform: translate3d(0, 0, 0); }
 }
 
-@keyframes profile-panel-enter-side {
-  0% { opacity: 0; transform: translate3d(72px, 0, 0) scale(.982); }
-  68% { opacity: 1; transform: translate3d(-6px, 0, 0) scale(1.003); }
-  84% { transform: translate3d(2px, 0, 0) scale(.999); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-}
-
-@keyframes profile-panel-enter-up {
-  0% { opacity: 0; transform: translate3d(0, 26%, 0) scale(.965); }
-  66% { opacity: 1; transform: translate3d(0, -9px, 0) scale(1.006); }
-  84% { transform: translate3d(0, 3px, 0) scale(.999); }
-  100% { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-}
-
-@keyframes profile-item-enter {
-  from { opacity: 0; transform: translate3d(0, 12px, 0) scale(.99); }
-  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
-}
-
-@keyframes profile-avatar-pop {
-  0% { opacity: 0; transform: scale(.68) rotate(-9deg); }
-  68% { opacity: 1; transform: scale(1.1) rotate(2deg); }
-  100% { opacity: 1; transform: scale(1) rotate(0); }
-}
 
 @keyframes sheet-content-enter {
   from { opacity: 0; }
@@ -2521,6 +2486,20 @@ select {
 .account-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 14px 0 22px; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--line); }
 .account-stats span { display: flex; min-height: 70px; align-items: center; justify-content: center; flex-direction: column; background: #faf7f2; color: var(--muted); font-size: .54rem; }
 .account-stats strong { color: var(--ink); font-family: var(--serif); font-size: 1.15rem; font-weight: 550; }
+.profile-page { max-width: 1120px; }
+.profile-heading { margin-bottom: 27px; }
+.profile-layout { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(300px, .88fr); align-items: start; gap: 22px; }
+.profile-primary,
+.profile-secondary { min-width: 0; }
+.profile-page .account-card { border: 1px solid var(--line); border-radius: 14px; background: var(--paper-deep); }
+.profile-page .account-avatar { width: 52px; height: 52px; }
+.profile-page .account-card strong { font-family: var(--serif); font-size: 1rem; }
+.profile-page .account-stats { margin: 12px 0 18px; }
+.profile-page .account-stats span { min-height: 82px; }
+.profile-secondary { display: flex; flex-direction: column; }
+.profile-secondary .sync-card,
+.profile-secondary .install-card { border-radius: 14px; }
+.profile-secondary > .danger-button { width: 100%; margin-top: 2px; }
 .profile-editor-card { margin: 0 0 14px; padding: 15px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper-deep); }
 .profile-editor-card .field-label { margin-bottom: 4px; font-family: var(--serif); font-size: .88rem; }
 .profile-editor-card > div:first-child > p { margin: 0 0 12px; color: var(--muted-dark); font-size: .61rem; line-height: 1.45; }
@@ -2869,6 +2848,7 @@ select {
 
 @media (max-width: 1120px) {
   .page-content { padding-left: 34px; padding-right: 34px; }
+  .profile-layout { grid-template-columns: 1fr; }
   .history-page .outfit-history { grid-template-columns: 1fr; }
   .rotation-panel { grid-template-columns: 1fr 390px; }
   .clothing-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
@@ -2998,7 +2978,6 @@ select {
   .sheet-layer { align-items: flex-end; }
   .sheet-backdrop { backdrop-filter: none; }
   .sheet-panel { width: 100%; height: min(92vh, 820px); border-radius: 18px 18px 0 0; animation-name: sheet-panel-enter-up; animation-duration: 400ms; }
-  .sheet-panel.sheet-panel--profile { transform-origin: 50% 100%; animation-name: profile-panel-enter-up; animation-duration: 520ms; }
   .sheet-handle { display: block; width: 35px; height: 4px; margin: 8px auto 0; border-radius: 99px; background: #c9c1b7; }
   .sheet-header { padding: 17px 18px 15px; }
   .sheet-header h2 { max-width: 270px; font-size: 1.43rem; }
@@ -3015,6 +2994,8 @@ select {
   .history-page .history-empty { min-height: 360px; }
   .profile-editor-actions { grid-template-columns: 1fr; }
   .profile-editor-actions .primary-button { width: 100%; }
+  .profile-page .account-card { padding: 15px; }
+  .profile-page .account-stats span { min-height: 72px; }
   .outfit-history { grid-template-columns: 1fr; gap: 21px; }
   .history-calendar { padding: 14px; }
   .history-day { font-size: .68rem; }
