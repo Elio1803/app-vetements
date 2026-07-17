@@ -2357,8 +2357,7 @@ select {
 .sheet-footer {
   padding: 15px 28px calc(15px + env(safe-area-inset-bottom));
   border-top: 1px solid var(--line);
-  background: rgba(255, 253, 249, 0.93);
-  backdrop-filter: blur(12px);
+  background: var(--paper);
   animation: sheet-content-enter 180ms 75ms ease-out both;
 }
 
@@ -3255,6 +3254,7 @@ select {
 
 @media (max-width: 680px) {
   body { background: var(--ivory); }
+  .mobile-header, .mobile-nav { background: var(--ivory); backdrop-filter: none; }
   .mobile-header { min-height: calc(56px + env(safe-area-inset-top)); padding: calc(7px + env(safe-area-inset-top)) max(15px, env(safe-area-inset-right)) 7px max(15px, env(safe-area-inset-left)); }
   .mobile-header .brand-monogram { width: 36px; height: 36px; }
   .mobile-header .brand-copy strong { font-size: 1rem; }
@@ -3693,6 +3693,7 @@ select {
     body {
       background: var(--ivory);
     }
+    .mobile-header, .mobile-nav { background: var(--ivory); }
   }
 }
 

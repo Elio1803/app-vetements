@@ -42,7 +42,9 @@ import {
   type ChangeEvent,
   type DragEvent,
   lazy,
+  memo,
   Suspense,
+  useDeferredValue,
   useEffect,
   useMemo,
   useRef,
@@ -79,7 +81,7 @@ import {
   sortByLeastRecentlyWorn,
 } from './lib/wardrobe-utils'
 import { useWardrobeStore } from './lib/use-wardrobe-store'
-import { useDailyDate, useOnlineStatus, usePwaInstall, useRotatingProgress } from './hooks/useAppSystem'
+import { useDailyDate, useIdleFeaturePrefetch, useOnlineStatus, usePwaInstall, useRotatingProgress } from './hooks/useAppSystem'
 import { useCurrentWeather } from './hooks/useCurrentWeather'
 import { wardrobeStore } from './lib/wardrobe-store'
 import { wardrobeApi } from './lib/wardrobe-api'
@@ -112,15 +114,18 @@ type AppView = 'wardrobe' | 'generate' | 'history' | 'profile'
 type SortMode = 'rotation' | 'recent' | 'worn'
 type CategoryFilter = ClothingCategory | 'all'
 
-const OutfitHistory = lazy(() => import('./components/OutfitHistory').then((module) => ({
-  default: module.OutfitHistory,
-})))
-const OutfitBoard = lazy(() => import('./components/OutfitBoard').then((module) => ({
-  default: module.OutfitBoard,
-})))
-const HelpChat = lazy(() => import('./components/HelpChat').then((module) => ({
-  default: module.HelpChat,
-})))
+let outfitHistoryPromise: Promise<{ default: typeof import('./components/OutfitHistory')['OutfitHistory'] }> | undefined
+let outfitBoardPromise: Promise<{ default: typeof import('./components/OutfitBoard')['OutfitBoard'] }> | undefined
+let helpChatPromise: Promise<{ default: typeof import('./components/HelpChat')['HelpChat'] }> | undefined
+
+const loadOutfitHistory = () => outfitHistoryPromise ??= import('./components/OutfitHistory').then((module) => ({ default: module.OutfitHistory }))
+const loadOutfitBoard = () => outfitBoardPromise ??= import('./components/OutfitBoard').then((module) => ({ default: module.OutfitBoard }))
+const loadHelpChat = () => helpChatPromise ??= import('./components/HelpChat').then((module) => ({ default: module.HelpChat }))
+const prefetchAppFeatures = () => { void Promise.allSettled([loadOutfitHistory(), loadOutfitBoard(), loadHelpChat()]) }
+
+const OutfitHistory = lazy(loadOutfitHistory)
+const OutfitBoard = lazy(loadOutfitBoard)
+const HelpChat = lazy(loadHelpChat)
 
 const PASSWORD_RECOVERY_KEY = 'le-dressing:password-recovery'
 
@@ -182,8 +187,8 @@ const CATEGORY_FILTERS: Array<{ value: CategoryFilter; label: string }> = [
   })),
 ]
 
-function itemStatus(item: ClothingItem) {
-  const elapsed = daysSince(item.lastWornAt)
+function itemStatus(item: ClothingItem, now = new Date()) {
+  const elapsed = daysSince(item.lastWornAt, now)
   if (elapsed === null) return { label: 'Jamais portée', short: 'Jamais', tone: 'forgotten' }
   if (elapsed === 0) return { label: 'Portée aujourd’hui', short: 'Aujourd’hui', tone: 'fresh' }
   if (elapsed === 1) return { label: 'Portée hier', short: 'Hier', tone: 'fresh' }
@@ -351,10 +356,20 @@ function recoverLocalWardrobeItems(targetUserId: string): ClothingItem[] {
   return [...recovered.values()]
 }
 
-function ClothingCard({ item, onOpen }: { item: ClothingItem; onOpen: () => void }) {
-  const status = itemStatus(item)
-  const shouldReduceMotion = useReducedMotion()
-  const canHover = typeof window !== 'undefined' && window.matchMedia('(pointer: fine)').matches
+const ClothingCard = memo(function ClothingCard({
+  item,
+  onOpen,
+  today,
+  shouldReduceMotion,
+  canHover,
+}: {
+  item: ClothingItem
+  onOpen: () => void
+  today: Date
+  shouldReduceMotion: boolean
+  canHover: boolean
+}) {
+  const status = itemStatus(item, today)
   return (
     <motion.button
       layout
@@ -386,11 +401,17 @@ function ClothingCard({ item, onOpen }: { item: ClothingItem; onOpen: () => void
       </span>
     </motion.button>
   )
-}
+}, (previous, next) => (
+  previous.item === next.item
+  && previous.today === next.today
+  && previous.shouldReduceMotion === next.shouldReduceMotion
+  && previous.canHover === next.canHover
+))
 
 function App() {
   const state = useWardrobeStore()
   const shouldReduceMotion = useReducedMotion()
+  const canHover = window.matchMedia('(pointer: fine)').matches
   const initialLocalSession = getLocalSession()
   const [authenticated, setAuthenticated] = useState(() => !isSupabaseConfigured && Boolean(initialLocalSession))
   const [authLoading, setAuthLoading] = useState(isSupabaseConfigured)
@@ -406,6 +427,7 @@ function App() {
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [sortMode, setSortMode] = useState<SortMode>('rotation')
   const [query, setQuery] = useState('')
+  const deferredQuery = useDeferredValue(query)
   const [addOpen, setAddOpen] = useState(false)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [editItem, setEditItem] = useState(false)
@@ -436,6 +458,7 @@ function App() {
   const [syncError, setSyncError] = useState('')
   const today = useDailyDate()
   const { canInstall, isInstalled, requestInstall } = usePwaInstall()
+  useIdleFeaturePrefetch(authenticated && !authLoading, prefetchAppFeatures)
   const { weather, status: weatherStatus, error: weatherError, requestWeather } = useCurrentWeather()
   const cameraInput = useRef<HTMLInputElement>(null)
   const galleryInput = useRef<HTMLInputElement>(null)
@@ -444,6 +467,7 @@ function App() {
   const initialEntryPlayed = useRef(false)
   const syncingLocalItems = useRef(new Set<string>())
   const syncLocalItemsRunning = useRef(false)
+  const cloudRefreshRunning = useRef(false)
 
   useEffect(() => () => {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
@@ -617,7 +641,8 @@ function App() {
     let cancelled = false
 
     const refreshCloudWardrobe = async () => {
-      if (!navigator.onLine || syncingLocalItems.current.size > 0) return
+      if (cloudRefreshRunning.current || document.visibilityState !== 'visible' || !navigator.onLine || syncingLocalItems.current.size > 0) return
+      cloudRefreshRunning.current = true
       setCloudRefreshing(true)
       try {
         const pendingLocalItems = wardrobeStore.getSnapshot().items.filter((item) =>
@@ -638,6 +663,7 @@ function App() {
           console.warn('Unable to refresh cloud wardrobe:', error)
         }
       } finally {
+        cloudRefreshRunning.current = false
         if (!cancelled) setCloudRefreshing(false)
       }
     }
@@ -666,7 +692,10 @@ function App() {
     setAppEntering(true)
   }, [authenticated, authLoading, bootLoading])
 
-  const stats = wardrobeStore.getStats()
+  const stats = useMemo(
+    () => wardrobeStore.getStats(today),
+    [state.items, state.outfits, today],
+  )
   const displayName = currentProfileName || profileNameFromEmail(currentEmail)
   const displayInitials = displayName
     .split(/[\s._-]+/)
@@ -691,7 +720,7 @@ function App() {
       : CloudSun
 
   const visibleItems = useMemo(() => {
-    const normalized = query.trim().toLocaleLowerCase('fr')
+    const normalized = deferredQuery.trim().toLocaleLowerCase('fr')
     const filtered = state.items.filter((item) => {
       if (category !== 'all' && item.category !== category) return false
       if (!normalized) return true
@@ -700,7 +729,7 @@ function App() {
         .includes(normalized)
     })
     return sortItems(filtered, sortMode)
-  }, [category, query, sortMode, state.items])
+  }, [category, deferredQuery, sortMode, state.items])
 
   const visibleGroups = useMemo(() => {
     const categories = category === 'all' ? CLOTHING_CATEGORIES : [category]
@@ -712,7 +741,10 @@ function App() {
       .filter((group) => group.items.length > 0)
   }, [category, visibleItems])
 
-  const rediscoveryItems = sortByLeastRecentlyWorn(state.items).slice(0, 3)
+  const rediscoveryItems = useMemo(
+    () => sortByLeastRecentlyWorn(state.items, today).slice(0, 3),
+    [state.items, today],
+  )
   const localOnlyCount = state.items.filter((item) => isLocalPhotoUrl(item.photoUrl)).length
 
   const showToast = (message: string) => {
@@ -1322,7 +1354,7 @@ function App() {
               </div>
             </section>}
 
-            <section className="wardrobe-section" aria-labelledby="wardrobe-title">
+            <section className="wardrobe-section" aria-labelledby="wardrobe-title" aria-busy={query !== deferredQuery}>
               <div className="section-title-row">
                 <div>
                   <p className="eyebrow">Votre collection</p>
@@ -1389,7 +1421,14 @@ function App() {
                       >
                         <AnimatePresence initial={false}>
                           {group.items.map((item) => (
-                            <ClothingCard item={item} onOpen={() => openItem(item)} key={item.id} />
+                            <ClothingCard
+                              item={item}
+                              onOpen={() => openItem(item)}
+                              today={today}
+                              shouldReduceMotion={Boolean(shouldReduceMotion)}
+                              canHover={canHover}
+                              key={item.id}
+                            />
                           ))}
                         </AnimatePresence>
                         {cloudRefreshing && Array.from({ length: Math.min(2, Math.max(1, group.items.length)) }, (_, index) => (
@@ -1416,12 +1455,12 @@ function App() {
                   <span><Shirt size={25} /></span>
                   <h3>
                     {state.items.length
-                      ? query.trim() ? `Aucun résultat pour « ${query.trim()} »` : 'Aucune pièce dans cette catégorie.'
+                      ? deferredQuery.trim() ? `Aucun résultat pour « ${deferredQuery.trim()} »` : 'Aucune pièce dans cette catégorie.'
                       : 'Votre dressing est encore vide'}
                   </h3>
                   <p>
                     {state.items.length
-                      ? query.trim() ? 'Essayez un autre nom ou effacez la recherche pour retrouver tout votre dressing.' : 'Cette catégorie est vide. Affichez toutes vos pièces ou ajoutez-en une nouvelle.'
+                      ? deferredQuery.trim() ? 'Essayez un autre nom ou effacez la recherche pour retrouver tout votre dressing.' : 'Cette catégorie est vide. Affichez toutes vos pièces ou ajoutez-en une nouvelle.'
                       : 'Une photo suffit pour commencer. Vous pourrez ensuite créer des tenues avec vos propres vêtements.'}
                   </p>
                   {!state.items.length && (
@@ -1442,7 +1481,7 @@ function App() {
                       }
                     }}
                   >
-                    {state.items.length ? query.trim() ? 'Effacer la recherche' : 'Afficher toutes les pièces' : 'Ajouter mon premier vêtement'}
+                    {state.items.length ? deferredQuery.trim() ? 'Effacer la recherche' : 'Afficher toutes les pièces' : 'Ajouter mon premier vêtement'}
                   </button>
                 </div>
               )}

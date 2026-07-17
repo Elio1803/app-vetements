@@ -1,7 +1,7 @@
 import type { ClothingItem } from '../types'
 import { motion } from 'framer-motion'
 import { Shirt } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { memo, useEffect, useState } from 'react'
 
 interface ClothingPhotoProps {
   item: ClothingItem
@@ -11,7 +11,7 @@ interface ClothingPhotoProps {
   layoutId?: string
 }
 
-export function ClothingPhoto({
+export const ClothingPhoto = memo(function ClothingPhoto({
   item,
   className = '',
   alt,
@@ -77,8 +77,9 @@ export function ClothingPhoto({
       loading={eager ? 'eager' : 'lazy'}
       decoding="async"
       fetchPriority={eager ? 'high' : 'auto'}
+      draggable={false}
       onLoad={() => setLoaded(true)}
       onError={() => setFailed(true)}
     />
   )
-}
+})

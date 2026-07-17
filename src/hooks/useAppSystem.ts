@@ -61,6 +61,26 @@ export function useRotatingProgress(active: boolean, count: number, intervalMs =
   return index
 }
 
+export function useIdleFeaturePrefetch(enabled: boolean, preload: () => void) {
+  useEffect(() => {
+    if (!enabled || !navigator.onLine) return undefined
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean } }).connection
+    if (connection?.saveData) return undefined
+
+    const idleApi = window as unknown as {
+      requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number
+      cancelIdleCallback?: (id: number) => void
+    }
+    if (idleApi.requestIdleCallback) {
+      const idleId = idleApi.requestIdleCallback(preload, { timeout: 800 })
+      return () => idleApi.cancelIdleCallback?.(idleId)
+    }
+
+    const timer = setTimeout(preload, 800)
+    return () => clearTimeout(timer)
+  }, [enabled, preload])
+}
+
 export function usePwaInstall() {
   const promptRef = useRef<InstallPromptEvent | null>(null)
   const [canInstall, setCanInstall] = useState(false)
