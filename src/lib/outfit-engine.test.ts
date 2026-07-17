@@ -154,15 +154,21 @@ describe("generationReadinessFor", () => {
 
 describe("suggestedMissingCategory", () => {
   it("guides the next useful addition without making the user guess", () => {
-    expect(suggestedMissingCategory([], "quotidien")).toBe("haut");
-    expect(suggestedMissingCategory([item("top", "haut", 2)], "quotidien")).toBe("bas");
+    const summer = new Date("2026-07-11T12:00:00.000Z");
+    const winter = new Date("2026-01-11T12:00:00.000Z");
+    expect(suggestedMissingCategory([], "quotidien", summer)).toBe("haut");
+    expect(suggestedMissingCategory([item("top", "haut", 2)], "quotidien", summer)).toBe("bas");
     expect(suggestedMissingCategory([
       item("top", "haut", 2),
       item("bottom", "bas", 2),
-    ], "travail")).toBe("chaussures");
+    ], "travail", summer)).toBe("chaussures");
     expect(suggestedMissingCategory([
       item("dress", "robe", 2),
       item("shoes", "chaussures", 2),
-    ], "travail")).toBe("veste_manteau");
+    ], "travail", winter)).toBe("veste_manteau");
+    expect(suggestedMissingCategory([
+      item("top", "haut", 2),
+      item("bottom", "bas", 2),
+    ], "quotidien", summer)).toBeNull();
   });
 });

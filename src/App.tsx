@@ -865,7 +865,7 @@ function App() {
   }
 
   const openNeededItem = () => {
-    const neededCategory = suggestedMissingCategory(state.items, occasion) ?? 'haut'
+    const neededCategory = suggestedMissingCategory(state.items, occasion, today, weather) ?? 'haut'
 
     resetAdd()
     setAddCategory(neededCategory)

@@ -26,6 +26,8 @@ const COLD_SEASONS: WardrobeSeason[] = ["automne", "hiver"];
 export function suggestedMissingCategory(
   items: readonly ClothingItem[],
   occasion: Occasion,
+  now: Date,
+  weather?: WeatherContext | null,
 ): ClothingCategory | null {
   const hasDress = items.some((item) => item.category === "robe");
   const hasTop = items.some((item) => item.category === "haut");
@@ -35,7 +37,12 @@ export function suggestedMissingCategory(
   if (FORMAL_OCCASIONS.includes(occasion) && !items.some((item) => item.category === "chaussures")) {
     return "chaussures";
   }
-  if (!items.some((item) => item.category === "veste_manteau")) return "veste_manteau";
+  const needsOuterLayer = weather
+    ? weather.apparentTemperatureC <= 14 || isWetWeather(weather)
+    : COLD_SEASONS.includes(wardrobeSeasonForDate(now));
+  if (needsOuterLayer && occasion !== "sport" && !items.some((item) => item.category === "veste_manteau")) {
+    return "veste_manteau";
+  }
   return null;
 }
 
