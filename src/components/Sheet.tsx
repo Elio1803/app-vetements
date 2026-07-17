@@ -26,23 +26,10 @@ export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, chi
     return () => query.removeEventListener('change', update)
   }, [])
 
-  const panelVariants = mobile
-    ? {
-        initial: { y: '100%' },
-        animate: { y: 0 },
-        exit: { y: '100%' },
-      }
-    : {
-        initial: { x: '100%' },
-        animate: { x: 0 },
-        exit: { x: '100%' },
-      }
-  const panelTransition = shouldReduceMotion
+  const panelExit = mobile ? { y: '100%' } : { x: '100%' }
+  const exitTransition = shouldReduceMotion
     ? { duration: 0 }
-    : { duration: mobile ? 0.4 : 0.34, ease: [0.16, 1, 0.3, 1] as const }
-  const contentTransition = shouldReduceMotion
-    ? { duration: 0 }
-    : { duration: 0.2, delay: 0.06, ease: [0.22, 1, 0.36, 1] as const }
+    : { duration: mobile ? 0.3 : 0.26, ease: [0.4, 0, 1, 1] as const }
 
   return (
     <AnimatePresence>
@@ -52,29 +39,21 @@ export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, chi
             className="sheet-backdrop"
             aria-label="Fermer"
             onClick={onClose}
-            initial={shouldReduceMotion ? false : { opacity: 0 }}
-            animate={{ opacity: 1 }}
+            initial={false}
             exit={{ opacity: 0 }}
-            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.28, ease: 'easeOut' }}
+            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
           />
           <motion.section
             className={`sheet-panel ${wide ? 'sheet-panel--wide' : ''}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="sheet-title"
-            variants={shouldReduceMotion ? undefined : panelVariants}
-            initial="initial"
-            animate="animate"
-            exit="exit"
-            transition={panelTransition}
+            initial={false}
+            exit={shouldReduceMotion ? undefined : panelExit}
+            transition={exitTransition}
           >
             <div className="sheet-handle" aria-hidden="true" />
-            <motion.header
-              className="sheet-header"
-              initial={shouldReduceMotion ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={contentTransition}
-            >
+            <header className="sheet-header">
               <div>
                 {eyebrow && <p className="eyebrow">{eyebrow}</p>}
                 <h2 id="sheet-title">{title}</h2>
@@ -88,16 +67,11 @@ export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, chi
               >
                 <X size={20} />
               </motion.button>
-            </motion.header>
-            <motion.div
-              className="sheet-body"
-              initial={shouldReduceMotion ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={shouldReduceMotion ? { duration: 0 } : { ...contentTransition, delay: 0.08 }}
-            >
+            </header>
+            <div className="sheet-body">
               {children}
-            </motion.div>
-            {footer && <motion.footer className="sheet-footer" initial={shouldReduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={contentTransition}>{footer}</motion.footer>}
+            </div>
+            {footer && <footer className="sheet-footer">{footer}</footer>}
           </motion.section>
         </div>
       )}
