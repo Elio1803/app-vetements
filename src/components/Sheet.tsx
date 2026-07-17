@@ -28,21 +28,21 @@ export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, chi
 
   const panelVariants = mobile
     ? {
-        initial: { y: '100%', opacity: 0.96, scale: 0.995 },
-        animate: { y: 0, opacity: 1, scale: 1 },
-        exit: { y: '100%', opacity: 0.96, scale: 0.995 },
+        initial: { y: '100%' },
+        animate: { y: 0 },
+        exit: { y: '100%' },
       }
     : {
-        initial: { x: '100%', opacity: 0.94 },
-        animate: { x: 0, opacity: 1 },
-        exit: { x: '100%', opacity: 0.96 },
+        initial: { x: '100%' },
+        animate: { x: 0 },
+        exit: { x: '100%' },
       }
   const panelTransition = shouldReduceMotion
     ? { duration: 0 }
-    : { type: 'spring' as const, stiffness: 260, damping: 31, mass: 0.82 }
+    : { duration: mobile ? 0.4 : 0.34, ease: [0.16, 1, 0.3, 1] as const }
   const contentTransition = shouldReduceMotion
     ? { duration: 0 }
-    : { duration: 0.28, delay: 0.08, ease: [0.22, 1, 0.36, 1] as const }
+    : { duration: 0.2, delay: 0.06, ease: [0.22, 1, 0.36, 1] as const }
 
   return (
     <AnimatePresence>
@@ -71,8 +71,8 @@ export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, chi
             <div className="sheet-handle" aria-hidden="true" />
             <motion.header
               className="sheet-header"
-              initial={shouldReduceMotion ? false : { opacity: 0, y: 7 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={shouldReduceMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
               transition={contentTransition}
             >
               <div>
@@ -91,9 +91,9 @@ export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, chi
             </motion.header>
             <motion.div
               className="sheet-body"
-              initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={shouldReduceMotion ? { duration: 0 } : { ...contentTransition, delay: 0.12 }}
+              initial={shouldReduceMotion ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={shouldReduceMotion ? { duration: 0 } : { ...contentTransition, delay: 0.08 }}
             >
               {children}
             </motion.div>

@@ -2087,6 +2087,8 @@ select {
   animation: none;
   backface-visibility: hidden;
   contain: layout;
+  isolation: isolate;
+  transform-style: preserve-3d;
   will-change: transform, opacity;
 }
 
@@ -2127,6 +2129,8 @@ select {
   flex: 1;
   padding: 24px 28px 34px;
   overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
 }
 
 .sheet-footer {

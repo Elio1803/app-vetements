@@ -568,12 +568,6 @@ function App() {
     return () => window.clearTimeout(timer)
   }, [appEntering])
 
-  useEffect(() => {
-    if (!accountOpen) return
-    setProfileNameDraft(currentProfileName || profileNameFromEmail(currentEmail))
-    setProfileNameError('')
-  }, [accountOpen, currentEmail, currentProfileName])
-
   const syncLocalItemsNow = async (manual = false) => {
     if (syncLocalItemsRunning.current) return
     if (!supabase || !currentUserId || !isOnline || !authenticated) {
@@ -1062,6 +1056,12 @@ function App() {
     setAuthenticated(false)
   }
 
+  const openAccount = () => {
+    setProfileNameDraft(currentProfileName || profileNameFromEmail(currentEmail))
+    setProfileNameError('')
+    setAccountOpen(true)
+  }
+
   const saveProfileName = async () => {
     const nextName = normalizeProfileName(profileNameDraft)
     if (!nextName) {
@@ -1226,7 +1226,7 @@ function App() {
           <p>Laissez-les inspirer votre prochaine tenue.</p>
           <button onClick={() => setView('generate')}>Composer <ChevronRight size={15} /></button>
         </div>
-        <button className="user-row" onClick={() => setAccountOpen(true)}>
+        <button className="user-row" onClick={openAccount}>
           <span className="user-avatar">{displayInitials}</span>
           <span><strong>{displayName}</strong><small>{supabase ? 'Compte synchronisé' : 'Compte local privé'}</small></span>
           <ChevronRight size={17} />
@@ -1680,7 +1680,7 @@ function App() {
         >
           <CalendarDays size={20} /><span>Historique</span>
         </button>
-        <button className={accountOpen ? 'is-active' : ''} onClick={() => setAccountOpen(true)} aria-label="Ouvrir le profil">
+        <button className={accountOpen ? 'is-active' : ''} onClick={openAccount} aria-label="Ouvrir le profil">
           <CircleUserRound size={20} /><span>Profil</span>
         </button>
       </nav>
