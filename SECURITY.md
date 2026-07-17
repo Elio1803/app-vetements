@@ -7,7 +7,7 @@
 - Chaque Edge Function exige une session Supabase valide, vérifie de nouveau l'utilisateur dans le handler et applique une limite de requêtes par utilisateur.
 - Les photos sont stockées dans un bucket privé, limitées à 5 Mo et vérifiées par leur signature binaire (JPEG, PNG ou WebP).
 - Les entrées et les réponses de fournisseurs sont validées avant utilisation. Les erreurs publiques ne contiennent pas les détails internes.
-- Le déploiement exécute les tests, le build TypeScript et `npm audit` avant publication.
+- Le déploiement exécute les tests et le build TypeScript. Les revues de sécurité exécutent aussi `npm audit`, tandis que Dependabot surveille les mises à jour chaque semaine.
 
 ## Secrets
 
