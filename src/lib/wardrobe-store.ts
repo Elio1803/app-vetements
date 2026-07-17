@@ -5,6 +5,7 @@ import type {
   Occasion,
   Outfit,
   OutfitSuggestion,
+  WeatherContext,
   WardrobeState,
   WardrobeStats,
 } from "../types";
@@ -169,8 +170,8 @@ export class WardrobeStore {
     this.commit({ ...this.state, selectedOccasion: occasion });
   }
 
-  generateOutfits(occasion: Occasion, note = ""): OutfitSuggestion[] {
-    const suggestions = generateLocalOutfits(this.state.items, occasion, note);
+  generateOutfits(occasion: Occasion, note = "", weather?: WeatherContext | null): OutfitSuggestion[] {
+    const suggestions = generateLocalOutfits(this.state.items, occasion, note, new Date(), weather);
     this.commit({ ...this.state, selectedOccasion: occasion, suggestions });
     return suggestions;
   }

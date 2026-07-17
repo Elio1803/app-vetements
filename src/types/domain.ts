@@ -81,6 +81,19 @@ export interface Outfit {
 
 export type OutfitSource = "ai" | "local";
 
+export type WeatherCondition = "clear" | "cloudy" | "fog" | "rain" | "snow" | "storm";
+
+export interface WeatherContext {
+  temperatureC: number;
+  apparentTemperatureC: number;
+  precipitationMm: number;
+  weatherCode: number;
+  windSpeedKmh: number;
+  condition: WeatherCondition;
+  observedAt: string;
+  source: "open-meteo";
+}
+
 export interface OutfitSuggestion {
   id: string;
   name: string;
@@ -96,6 +109,7 @@ export interface OutfitGenerationRequest {
   occasion: Occasion;
   note?: string;
   items?: ClothingItem[];
+  weather?: WeatherContext | null;
 }
 
 export interface OutfitCompositionRequest {

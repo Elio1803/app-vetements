@@ -325,7 +325,7 @@ export class SupabaseWardrobeApi implements WardrobeApi {
 
   async generateOutfits(request: OutfitGenerationRequest): Promise<OutfitSuggestion[]> {
     if (this.mode === "local") {
-      return this.store.generateOutfits(request.occasion, request.note);
+      return this.store.generateOutfits(request.occasion, request.note, request.weather);
     }
 
     let lastError: unknown;
@@ -340,6 +340,7 @@ export class SupabaseWardrobeApi implements WardrobeApi {
             requestId,
             occasion: request.occasion,
             note: request.note?.trim() || undefined,
+            weather: request.weather ?? undefined,
           }),
         });
         const suggestions = this.parseSuggestions(data, request);
@@ -351,7 +352,7 @@ export class SupabaseWardrobeApi implements WardrobeApi {
       }
     }
     this.recordFallback(lastError);
-    return this.store.generateOutfits(request.occasion, request.note);
+    return this.store.generateOutfits(request.occasion, request.note, request.weather);
   }
 
   async composeOutfit(

@@ -10,6 +10,8 @@ import {
   Check,
   ChevronRight,
   CircleUserRound,
+  CloudRain,
+  CloudSun,
   Clock3,
   Download,
   Dumbbell,
@@ -19,6 +21,7 @@ import {
   House,
   ImagePlus,
   LogOut,
+  LocateFixed,
   Plus,
   RefreshCw,
   Search,
@@ -26,6 +29,7 @@ import {
   Shirt,
   SlidersHorizontal,
   Sparkles,
+  Snowflake,
   Trash2,
   Upload,
   WandSparkles,
@@ -66,6 +70,7 @@ import {
 } from './lib/wardrobe-utils'
 import { useWardrobeStore } from './lib/use-wardrobe-store'
 import { useDailyDate, useOnlineStatus, usePwaInstall, useRotatingProgress } from './hooks/useAppSystem'
+import { useCurrentWeather } from './hooks/useCurrentWeather'
 import { wardrobeStore } from './lib/wardrobe-store'
 import { wardrobeApi } from './lib/wardrobe-api'
 import {
@@ -74,6 +79,7 @@ import {
   wardrobeStorageKeyForAccount,
 } from './lib/storage'
 import { createProductPhoto, defaultFocusForCategory, focusPhotoOnCategory, type GarmentFocus } from './lib/product-photo'
+import { isWetWeather, weatherConditionLabel } from './lib/weather'
 import {
   createRemoveBgProductPhoto,
   isGoogleAuthEnabled,
@@ -90,6 +96,7 @@ import {
   type ClothingItem,
   type Occasion,
   type OutfitSuggestion,
+  type WeatherContext,
 } from './types'
 
 type AppView = 'wardrobe' | 'generate'
@@ -329,6 +336,7 @@ function generationReadinessFor(
   items: readonly ClothingItem[],
   occasion: Occasion,
   now: Date,
+  weather?: WeatherContext | null,
 ) {
   const hasDress = items.some((item) => item.category === 'robe')
   const hasSeparates = items.some((item) => item.category === 'haut') && items.some((item) => item.category === 'bas')
@@ -338,6 +346,9 @@ function generationReadinessFor(
   const readableSeason = wardrobeSeasonLabel(season)
   const formalOccasion = occasion === 'travail' || occasion === 'soiree' || occasion === 'rendez_vous' || occasion === 'habille'
   const coldSeason = season === 'automne' || season === 'hiver'
+  const needsOuterLayer = weather
+    ? weather.apparentTemperatureC <= 14 || isWetWeather(weather)
+    : coldSeason
 
   if (!hasDress && !hasSeparates) {
     return {
@@ -355,19 +366,23 @@ function generationReadinessFor(
     }
   }
 
-  if (coldSeason && occasion !== 'sport' && !hasWarmLayer) {
+  if (needsOuterLayer && occasion !== 'sport' && !hasWarmLayer) {
     return {
       canGenerate: false,
-      message: `En ${readableSeason}, ajoutez une veste ou un manteau pour générer une tenue vraiment adaptée à la saison.`,
+      message: weather
+        ? `Avec ${Math.round(weather.apparentTemperatureC)} °C ressentis${isWetWeather(weather) ? ' et des précipitations' : ''}, ajoutez une veste ou un manteau pour une tenue adaptée.`
+        : `En ${readableSeason}, ajoutez une veste ou un manteau pour générer une tenue vraiment adaptée à la saison.`,
       season,
     }
   }
 
   return {
     canGenerate: true,
-    message: coldSeason
-      ? `Suggestions adaptées à l’${readableSeason} : les couches chaudes seront privilégiées.`
-      : `Suggestions adaptées à la saison ${readableSeason}.`,
+    message: weather
+      ? `Météo réelle intégrée : ${Math.round(weather.apparentTemperatureC)} °C ressentis, ${weatherConditionLabel(weather.condition)}.`
+      : coldSeason
+        ? `Suggestions adaptées à l’${readableSeason} : les couches chaudes seront privilégiées.`
+        : `Suggestions adaptées à la saison ${readableSeason}.`,
     season,
   }
 }
@@ -453,6 +468,7 @@ function App() {
   const [syncError, setSyncError] = useState('')
   const today = useDailyDate()
   const { canInstall, isInstalled, requestInstall } = usePwaInstall()
+  const { weather, status: weatherStatus, error: weatherError, requestWeather } = useCurrentWeather()
   const cameraInput = useRef<HTMLInputElement>(null)
   const galleryInput = useRef<HTMLInputElement>(null)
   const storagePaths = useRef(new Map<string, string>())
@@ -677,10 +693,15 @@ function App() {
     .toLocaleUpperCase('fr') || 'EP'
   const selectedItem = state.items.find((item) => item.id === selectedItemId) ?? null
   const generationReadiness = useMemo(
-    () => generationReadinessFor(state.items, occasion, today),
-    [occasion, state.items, today],
+    () => generationReadinessFor(state.items, occasion, today, weather),
+    [occasion, state.items, today, weather],
   )
   const canGenerate = generationReadiness.canGenerate
+  const WeatherIcon = weather?.condition === 'rain' || weather?.condition === 'storm'
+    ? CloudRain
+    : weather?.condition === 'snow'
+      ? Snowflake
+      : CloudSun
 
   const visibleItems = useMemo(() => {
     const normalized = query.trim().toLocaleLowerCase('fr')
@@ -979,6 +1000,7 @@ function App() {
         occasion,
         note,
         items: state.items,
+        weather,
       })
       if (wardrobeApi.lastRemoteError) {
         showToast('Service IA indisponible : propositions locales affichées.')
@@ -1333,7 +1355,7 @@ function App() {
                 <h1>Créer une tenue</h1>
                 <p className="page-subtitle">Trois propositions pensées uniquement avec les pièces de votre dressing.</p>
                 <div className="context-pills" aria-label="Contexte des suggestions">
-                  <span>Saison actuelle</span><span>Occasion</span><span>Rotation intelligente</span>
+                  <span>{weather ? `${Math.round(weather.apparentTemperatureC)} °C ressentis` : 'Saison actuelle'}</span><span>Occasion</span><span>Rotation intelligente</span>
                 </div>
               </div>
               <span className="ai-badge"><Sparkles size={15} /> Assisté par IA</span>
@@ -1341,6 +1363,36 @@ function App() {
 
             <div className="generator-layout">
               <section className="generator-form-card" aria-labelledby="generator-form-title">
+                <div className={`weather-card weather-card--${weatherStatus}`}>
+                  <span className="weather-card-icon" aria-hidden="true">
+                    {weatherStatus === 'loading'
+                      ? <RefreshCw className="motion-icon spin" size={21} />
+                      : weather
+                        ? <WeatherIcon size={22} />
+                        : <LocateFixed size={22} />}
+                  </span>
+                  <div className="weather-card-copy">
+                    <strong>{weather ? 'Météo réelle autour de vous' : 'Adapter à votre météo'}</strong>
+                    {weather ? (
+                      <p>
+                        {Math.round(weather.temperatureC)} °C · Ressenti {Math.round(weather.apparentTemperatureC)} °C · {weatherConditionLabel(weather.condition)}
+                      </p>
+                    ) : (
+                      <p>{weatherStatus === 'loading' ? 'Localisation et météo en cours…' : weatherError || 'Utilisez votre position pour choisir les bonnes couches.'}</p>
+                    )}
+                    {weather && (
+                      <a href="https://open-meteo.com/" target="_blank" rel="noreferrer">Données Open‑Meteo</a>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    className="weather-card-action"
+                    onClick={() => void requestWeather()}
+                    disabled={weatherStatus === 'loading' || !isOnline}
+                  >
+                    {weather ? 'Actualiser' : 'Activer'}
+                  </button>
+                </div>
                 <div className="form-step-label"><span>01</span><p id="generator-form-title">Pour quelle occasion ?</p></div>
                 <fieldset className="occasion-grid">
                   <legend className="sr-only">Choisissez une occasion</legend>

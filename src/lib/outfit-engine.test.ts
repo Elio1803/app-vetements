@@ -82,4 +82,29 @@ describe("generateLocalOutfits", () => {
     expect(suggestions.every((suggestion) => suggestion.itemIds.includes("coat-1"))).toBe(true);
     expect(suggestions[0].reason).toContain("hiver");
   });
+
+  it("uses real cold and rainy weather even during summer", () => {
+    const now = new Date("2026-07-11T12:00:00.000Z");
+    const items = [
+      item("top-1", "haut", 5),
+      item("bottom-1", "bas", 4),
+      item("shoes-1", "chaussures", 3),
+      item("coat-1", "veste_manteau", 2),
+    ];
+
+    const suggestions = generateLocalOutfits(items, "quotidien", "", now, {
+      temperatureC: 12,
+      apparentTemperatureC: 9,
+      precipitationMm: 1.2,
+      weatherCode: 61,
+      windSpeedKmh: 22,
+      condition: "rain",
+      observedAt: now.toISOString(),
+      source: "open-meteo",
+    });
+
+    expect(suggestions.every((suggestion) => suggestion.itemIds.includes("coat-1"))).toBe(true);
+    expect(suggestions[0].reason).toContain("9 °C ressentis");
+    expect(suggestions[0].reason).toContain("pluie");
+  });
 });

@@ -3,9 +3,11 @@ import type {
   ClothingItem,
   Occasion,
   OutfitSuggestion,
+  WeatherContext,
 } from "../types";
 import { daysSince } from "./dates";
 import { groupItemsByCategory, sortByLeastRecentlyWorn } from "./wardrobe-utils";
+import { isWetWeather, weatherConditionLabel } from "./weather";
 
 const OUTFIT_NAMES: Record<Occasion, string[]> = {
   quotidien: ["Naturel maîtrisé", "Essentiel bien pensé", "Allure sans effort"],
@@ -33,19 +35,36 @@ export function wardrobeSeasonForDate(date: Date): WardrobeSeason {
   return "hiver";
 }
 
-function itemSeasonScore(item: ClothingItem, season: WardrobeSeason, occasion: Occasion): number {
+function itemSeasonScore(
+  item: ClothingItem,
+  season: WardrobeSeason,
+  occasion: Occasion,
+  weather?: WeatherContext | null,
+): number {
   const text = `${item.name ?? ""} ${item.colorDominant ?? ""}`.toLocaleLowerCase("fr");
   let score = 0;
+  const feelsLike = weather?.apparentTemperatureC;
+  const isActuallyCold = feelsLike !== undefined && feelsLike <= 14;
+  const isActuallyHot = feelsLike !== undefined && feelsLike >= 25;
+  const wetWeather = weather ? isWetWeather(weather) : false;
 
-  if (item.category === "veste_manteau") score += COLD_SEASONS.includes(season) ? 7 : -2;
+  if (item.category === "veste_manteau") {
+    score += weather
+      ? isActuallyCold ? 10 : wetWeather ? 6 : isActuallyHot ? -10 : -1
+      : COLD_SEASONS.includes(season) ? 7 : -2;
+  }
   if (item.category === "accessoire") score += COLD_SEASONS.includes(season) || FORMAL_OCCASIONS.includes(occasion) ? 2 : 0;
   if (item.category === "robe") score += season === "ete" || FORMAL_OCCASIONS.includes(occasion) ? 3 : season === "hiver" ? -2 : 0;
 
   if (/manteau|doudoune|laine|pull|col roulé|col roule|sweat|cardigan|veste|bottes|écharpe|echarpe/i.test(text)) {
-    score += COLD_SEASONS.includes(season) ? 5 : -2;
+    score += weather
+      ? isActuallyCold ? 7 : wetWeather ? 3 : isActuallyHot ? -7 : 0
+      : COLD_SEASONS.includes(season) ? 5 : -2;
   }
   if (/short|débardeur|debardeur|lin|sandale|t-shirt|tee-shirt|jupe|robe légère|robe legere/i.test(text)) {
-    score += season === "ete" ? 5 : season === "hiver" ? -4 : 0;
+    score += weather
+      ? isActuallyHot ? 7 : isActuallyCold ? -7 : wetWeather && /sandale/i.test(text) ? -5 : 0
+      : season === "ete" ? 5 : season === "hiver" ? -4 : 0;
   }
   if (/noir|marine|gris|marron|bordeaux|beige/i.test(text)) score += COLD_SEASONS.includes(season) ? 1 : 0;
   if (/blanc|crème|creme|pastel|rose|bleu clair/i.test(text)) score += season === "printemps" || season === "ete" ? 1 : 0;
@@ -82,6 +101,7 @@ function describeReason(
   occasion: Occasion,
   note: string,
   now: Date,
+  weather?: WeatherContext | null,
 ): string {
   const season = wardrobeSeasonForDate(now);
   const forgotten = sortByLeastRecentlyWorn(selected, now)[0];
@@ -94,20 +114,27 @@ function describeReason(
   const context = note.trim() ? `, tout en tenant compte de « ${note.trim()} »` : "";
   const finish = occasion === "sport" ? "mobile et facile à superposer" : "cohérente et facile à porter";
   const readableSeason = wardrobeSeasonLabel(season);
-  const seasonDetail = COLD_SEASONS.includes(season)
-    ? ` avec une attention aux couches adaptées à l’${readableSeason}`
-    : ` avec une silhouette adaptée à la saison ${readableSeason}`;
+  const seasonDetail = weather
+    ? ` en tenant compte des ${Math.round(weather.apparentTemperatureC)} °C ressentis et du ${weatherConditionLabel(weather.condition)}`
+    : COLD_SEASONS.includes(season)
+      ? ` avec une attention aux couches adaptées à l’${readableSeason}`
+      : ` avec une silhouette adaptée à la saison ${readableSeason}`;
   return `${rotation}${context} : la tenue reste ${finish}${seasonDetail}.`;
 }
 
-function rankedPools(items: readonly ClothingItem[], occasion: Occasion, now: Date) {
+function rankedPools(
+  items: readonly ClothingItem[],
+  occasion: Occasion,
+  now: Date,
+  weather?: WeatherContext | null,
+) {
   const season = wardrobeSeasonForDate(now);
   const grouped = groupItemsByCategory(items);
   return Object.fromEntries(
     Object.entries(grouped).map(([category, values]) => [
       category,
       sortByLeastRecentlyWorn(values, now).sort((a, b) => (
-        itemSeasonScore(b, season, occasion) - itemSeasonScore(a, season, occasion)
+        itemSeasonScore(b, season, occasion, weather) - itemSeasonScore(a, season, occasion, weather)
       )),
     ]),
   ) as Record<ClothingCategory, ClothingItem[]>;
@@ -123,18 +150,26 @@ export function generateLocalOutfits(
   occasion: Occasion,
   note = "",
   now = new Date(),
+  weather?: WeatherContext | null,
 ): OutfitSuggestion[] {
   if (!items.length) return [];
 
-  const pool = rankedPools(items, occasion, now);
+  const pool = rankedPools(items, occasion, now, weather);
   const season = wardrobeSeasonForDate(now);
   const dayKey = now.toISOString().slice(0, 10);
-  const seed = hashText(`${occasion}|${note.trim().toLocaleLowerCase("fr")}|${dayKey}`);
+  const weatherSeed = weather
+    ? `${Math.round(weather.apparentTemperatureC)}|${weather.condition}|${weather.precipitationMm}`
+    : "season-only";
+  const seed = hashText(`${occasion}|${note.trim().toLocaleLowerCase("fr")}|${dayKey}|${weatherSeed}`);
   const suggestions: OutfitSuggestion[] = [];
   const signatures = new Set<string>();
   const isFormal = FORMAL_OCCASIONS.includes(occasion);
-  const feelsCold = COLD_SEASONS.includes(season) || /froid|frai|pluie|vent|hiver|manteau|veste/i.test(note);
-  const feelsWarm = season === "ete" || /chaud|soleil|été|ete|canicule|léger|leger/i.test(note);
+  const feelsCold = weather
+    ? weather.apparentTemperatureC <= 14 || isWetWeather(weather)
+    : COLD_SEASONS.includes(season) || /froid|frai|pluie|vent|hiver|manteau|veste/i.test(note);
+  const feelsWarm = weather
+    ? weather.apparentTemperatureC >= 25 && !isWetWeather(weather)
+    : season === "ete" || /chaud|soleil|été|ete|canicule|léger|leger/i.test(note);
 
   for (let attempt = 0; attempt < 18 && suggestions.length < 3; attempt += 1) {
     const variant = suggestions.length;
@@ -179,7 +214,7 @@ export function generateLocalOutfits(
       name: OUTFIT_NAMES[occasion][variant] ?? `Tenue ${variant + 1}`,
       occasion,
       itemIds: selected.map((item) => item.id),
-      reason: describeReason(selected, occasion, note, now),
+      reason: describeReason(selected, occasion, note, now, weather),
       createdAt: now.toISOString(),
       source: "local",
     });
