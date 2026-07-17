@@ -23,6 +23,22 @@ type WardrobeSeason = "printemps" | "ete" | "automne" | "hiver";
 
 const COLD_SEASONS: WardrobeSeason[] = ["automne", "hiver"];
 
+export function suggestedMissingCategory(
+  items: readonly ClothingItem[],
+  occasion: Occasion,
+): ClothingCategory | null {
+  const hasDress = items.some((item) => item.category === "robe");
+  const hasTop = items.some((item) => item.category === "haut");
+  const hasBottom = items.some((item) => item.category === "bas");
+
+  if (!hasDress && (!hasTop || !hasBottom)) return hasTop ? "bas" : "haut";
+  if (FORMAL_OCCASIONS.includes(occasion) && !items.some((item) => item.category === "chaussures")) {
+    return "chaussures";
+  }
+  if (!items.some((item) => item.category === "veste_manteau")) return "veste_manteau";
+  return null;
+}
+
 export function wardrobeSeasonLabel(season: WardrobeSeason): string {
   return season === "ete" ? "été" : season;
 }

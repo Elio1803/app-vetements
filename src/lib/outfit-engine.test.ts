@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ClothingCategory, ClothingItem } from "../types";
-import { generateLocalOutfits, generationReadinessFor } from "./outfit-engine";
+import { generateLocalOutfits, generationReadinessFor, suggestedMissingCategory } from "./outfit-engine";
 
 function item(id: string, category: ClothingCategory, daysAgo: number): ClothingItem {
   const lastWornAt = new Date("2026-07-11T12:00:00.000Z");
@@ -149,5 +149,20 @@ describe("generationReadinessFor", () => {
     expect(readiness.canGenerate).toBe(true);
     expect(readiness.message).toContain("9 °C ressentis");
     expect(readiness.message).toContain("pluie");
+  });
+});
+
+describe("suggestedMissingCategory", () => {
+  it("guides the next useful addition without making the user guess", () => {
+    expect(suggestedMissingCategory([], "quotidien")).toBe("haut");
+    expect(suggestedMissingCategory([item("top", "haut", 2)], "quotidien")).toBe("bas");
+    expect(suggestedMissingCategory([
+      item("top", "haut", 2),
+      item("bottom", "bas", 2),
+    ], "travail")).toBe("chaussures");
+    expect(suggestedMissingCategory([
+      item("dress", "robe", 2),
+      item("shoes", "chaussures", 2),
+    ], "travail")).toBe("veste_manteau");
   });
 });

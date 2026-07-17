@@ -57,7 +57,7 @@ import { Sheet } from './components/Sheet'
 import { SkeletonCard } from './components/SkeletonCard'
 import { cardVariants, gridVariants, screenVariants, toastVariants, TRANSITIONS } from './lib/animations'
 import { daysSince, formatLastWorn } from './lib/dates'
-import { generationReadinessFor } from './lib/outfit-engine'
+import { generationReadinessFor, suggestedMissingCategory } from './lib/outfit-engine'
 import {
   normalizeProfileName,
   PROFILE_NAME_MAX_LENGTH,
@@ -450,6 +450,13 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      window.scrollTo({ top: 0, left: 0, behavior: 'auto' })
+    })
+    return () => window.cancelAnimationFrame(frame)
+  }, [view])
+
+  useEffect(() => {
     if (!supabase) return
     const supabaseClient = supabase
     let active = true
@@ -672,6 +679,10 @@ function App() {
     () => generationReadinessFor(state.items, occasion, today, weather),
     [occasion, state.items, today, weather],
   )
+  const emergencyReadiness = useMemo(
+    () => generationReadinessFor(state.items, 'quotidien', today, weather),
+    [state.items, today, weather],
+  )
   const canGenerate = generationReadiness.canGenerate
   const WeatherIcon = weather?.condition === 'rain' || weather?.condition === 'storm'
     ? CloudRain
@@ -829,6 +840,7 @@ function App() {
   const changeAddCategory = (category: ClothingCategory) => {
     setAddCategory(category)
     setAddFocus(defaultFocusForCategory(category))
+    setAddError('')
     if (photoData) {
       setPhotoData('')
       showToast('Catégorie changée : ajoutez à nouveau la photo pour cibler la bonne pièce.')
@@ -837,6 +849,7 @@ function App() {
 
   const changeAddFocus = (focus: GarmentFocus) => {
     setAddFocus(focus)
+    setAddError('')
     if (photoData) {
       setPhotoData('')
       showToast('Cadrage changé : ajoutez à nouveau la photo pour appliquer le bon zoom.')
@@ -849,6 +862,15 @@ function App() {
     setAddCategory('haut')
     setAddFocus('top_short')
     setAddError('')
+  }
+
+  const openNeededItem = () => {
+    const neededCategory = suggestedMissingCategory(state.items, occasion) ?? 'haut'
+
+    resetAdd()
+    setAddCategory(neededCategory)
+    setAddFocus(defaultFocusForCategory(neededCategory))
+    setAddOpen(true)
   }
 
   const saveItem = async () => {
@@ -1191,10 +1213,12 @@ function App() {
         </button>
         <div className="sidebar-spacer" />
         <div className="sidebar-insight">
-          <span className="insight-icon"><Sparkles size={16} /></span>
-          <strong>{pluralPieces(stats.neverWorn)} à découvrir</strong>
-          <p>Laissez-les inspirer votre prochaine tenue.</p>
-          <button onClick={() => setView('generate')}>Composer <ChevronRight size={15} /></button>
+          <span className="insight-icon">{state.items.length ? <Sparkles size={16} /> : <Camera size={16} />}</span>
+          <strong>{state.items.length ? `${pluralPieces(stats.neverWorn)} à découvrir` : 'Votre premier look'}</strong>
+          <p>{state.items.length ? 'Laissez-les inspirer votre prochaine tenue.' : 'Ajoutez quelques pièces pour commencer à composer.'}</p>
+          <button onClick={() => state.items.length ? setView('generate') : setAddOpen(true)}>
+            {state.items.length ? 'Composer' : 'Commencer'} <ChevronRight size={15} />
+          </button>
         </div>
         <button className={view === 'profile' ? 'user-row is-active' : 'user-row'} onClick={openProfile} aria-current={view === 'profile' ? 'page' : undefined}>
           <span className="user-avatar">{displayInitials}</span>
@@ -1266,13 +1290,15 @@ function App() {
               </section>
             )}
 
-            <button className="emergency-look" onClick={startEmergencyLook}>
-              <span><Zap size={20} /></span>
-              <span><strong>J’ai rien à me mettre</strong><small>Une tenue simple, maintenant, sans réfléchir.</small></span>
-              <ChevronRight size={19} />
-            </button>
+            {emergencyReadiness.canGenerate && (
+              <button className="emergency-look" onClick={startEmergencyLook}>
+                <span><Zap size={20} /></span>
+                <span><strong>J’ai rien à me mettre</strong><small>Une tenue simple, maintenant, sans réfléchir.</small></span>
+                <ChevronRight size={19} />
+              </button>
+            )}
 
-            <section className="rotation-panel" aria-labelledby="rotation-title">
+            {state.items.length > 0 && <section className="rotation-panel" aria-labelledby="rotation-title">
               <div className="rotation-copy">
                 <span className="rotation-kicker"><Sparkles size={15} /> Rotation du dressing</span>
                 <h2 id="rotation-title">
@@ -1294,7 +1320,7 @@ function App() {
                   <span>en rotation</span>
                 </div>
               </div>
-            </section>
+            </section>}
 
             <section className="wardrobe-section" aria-labelledby="wardrobe-title">
               <div className="section-title-row">
@@ -1302,11 +1328,19 @@ function App() {
                   <p className="eyebrow">Votre collection</p>
                   <h2 id="wardrobe-title">Mon dressing <span><AnimatedCounter value={state.items.length} /></span></h2>
                 </div>
-                <div className="wardrobe-tools">
+                {state.items.length > 0 && <div className="wardrobe-tools">
                   <label className="search-field">
                     <Search size={17} />
                     <span className="sr-only">Rechercher</span>
-                    <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Rechercher une pièce" />
+                    <input
+                      type="search"
+                      enterKeyHint="search"
+                      autoComplete="off"
+                      spellCheck={false}
+                      value={query}
+                      onChange={(event) => setQuery(event.target.value)}
+                      placeholder="Rechercher une pièce"
+                    />
                   </label>
                   <label className="sort-field">
                     <SlidersHorizontal size={16} />
@@ -1317,10 +1351,10 @@ function App() {
                       <option value="worn">Les plus portées</option>
                     </select>
                   </label>
-                </div>
+                </div>}
               </div>
 
-              <div className="filter-chips" role="group" aria-label="Filtrer par catégorie">
+              {state.items.length > 0 && <div className="filter-chips" role="group" aria-label="Filtrer par catégorie">
                 {CATEGORY_FILTERS.map((filter) => (
                   <button
                     key={filter.value}
@@ -1332,7 +1366,12 @@ function App() {
                     {filter.value !== 'all' && <span>{stats.categoryCounts[filter.value]}</span>}
                   </button>
                 ))}
-              </div>
+              </div>}
+              {state.items.length > 0 && (
+                <p className="sr-only" role="status" aria-live="polite">
+                  {visibleItems.length} {visibleItems.length > 1 ? 'pièces affichées' : 'pièce affichée'}
+                </p>
+              )}
 
               {visibleGroups.length > 0 ? (
                 <div className="category-groups">
@@ -1375,9 +1414,36 @@ function App() {
               ) : (
                 <div className="empty-state">
                   <span><Shirt size={25} /></span>
-                  <h3>{state.items.length ? 'Aucune pièce dans cette catégorie.' : 'Votre dressing est encore vide'}</h3>
-                  <p>{state.items.length ? 'Modifiez votre recherche ou ajoutez une nouvelle pièce.' : 'Ajoutez vos vêtements pour créer vos premières tenues.'}</p>
-                  <button className="primary-button" onClick={() => setAddOpen(true)}>Ajouter une pièce</button>
+                  <h3>
+                    {state.items.length
+                      ? query.trim() ? `Aucun résultat pour « ${query.trim()} »` : 'Aucune pièce dans cette catégorie.'
+                      : 'Votre dressing est encore vide'}
+                  </h3>
+                  <p>
+                    {state.items.length
+                      ? query.trim() ? 'Essayez un autre nom ou effacez la recherche pour retrouver tout votre dressing.' : 'Cette catégorie est vide. Affichez toutes vos pièces ou ajoutez-en une nouvelle.'
+                      : 'Une photo suffit pour commencer. Vous pourrez ensuite créer des tenues avec vos propres vêtements.'}
+                  </p>
+                  {!state.items.length && (
+                    <ol className="empty-state-steps" aria-label="Étapes pour commencer">
+                      <li><span>1</span> Photographiez</li>
+                      <li><span>2</span> Classez</li>
+                      <li><span>3</span> Composez</li>
+                    </ol>
+                  )}
+                  <button
+                    className="primary-button"
+                    onClick={() => {
+                      if (state.items.length) {
+                        setQuery('')
+                        setCategory('all')
+                      } else {
+                        setAddOpen(true)
+                      }
+                    }}
+                  >
+                    {state.items.length ? query.trim() ? 'Effacer la recherche' : 'Afficher toutes les pièces' : 'Ajouter mon premier vêtement'}
+                  </button>
                 </div>
               )}
             </section>
@@ -1404,6 +1470,22 @@ function App() {
               <span className="ai-badge"><Sparkles size={15} /> Assisté par IA</span>
             </header>
 
+            {state.items.length === 0 ? (
+              <section className="generator-first-run" aria-labelledby="generator-first-run-title">
+                <span className="generator-first-run-icon"><Sparkles size={28} /></span>
+                <p className="eyebrow">Première tenue</p>
+                <h2 id="generator-first-run-title">Ajoutez d’abord vos vêtements</h2>
+                <p>Le Dressing compose uniquement avec vos propres pièces. Commencez simplement : un haut et un bas, ou une robe, suffisent déjà pour obtenir vos premières idées.</p>
+                <ol aria-label="Étapes pour créer une tenue">
+                  <li><span>1</span><strong>Ajoutez</strong><small>vos vêtements</small></li>
+                  <li><span>2</span><strong>Choisissez</strong><small>une occasion</small></li>
+                  <li><span>3</span><strong>Composez</strong><small>3 propositions</small></li>
+                </ol>
+                <button className="primary-button" onClick={() => setAddOpen(true)}>
+                  <ImagePlus size={18} /> Ajouter mon premier vêtement
+                </button>
+              </section>
+            ) : (
             <div className="generator-layout">
               <section className="generator-form-card" aria-labelledby="generator-form-title">
                 <div className={`weather-card weather-card--${weatherStatus}`}>
@@ -1480,6 +1562,9 @@ function App() {
                   <div className="inline-alert" role="alert">
                     <Shirt size={18} />
                     <p>{generationReadiness.message}</p>
+                    <button type="button" className="inline-alert-action" onClick={openNeededItem}>
+                      <Plus size={14} /> Ajouter la pièce
+                    </button>
                   </div>
                 )}
                 {canGenerate && (
@@ -1614,6 +1699,7 @@ function App() {
                 )}
               </section>
             </div>
+            )}
           </motion.div>
         ) : view === 'history' ? (
           <motion.div
@@ -1796,12 +1882,19 @@ function App() {
         eyebrow="Nouvelle pièce"
         title="Ajouter au dressing"
         footer={
-          <button className="primary-button full-button" onClick={saveItem} disabled={photoBusy || savingItem} aria-busy={savingItem}>
-            {photoBusy ? 'Préparation de la photo…' : savingItem ? 'Envoi et analyse…' : 'Ajouter au dressing'}
-            {!photoBusy && !savingItem && <ChevronRight size={18} />}
+          <button className="primary-button full-button" onClick={saveItem} disabled={!photoData || photoBusy || savingItem} aria-busy={savingItem}>
+            {photoBusy ? 'Préparation de la photo…' : savingItem ? 'Envoi et analyse…' : photoData ? 'Ajouter au dressing' : 'Choisissez d’abord une photo'}
+            {photoData && !photoBusy && !savingItem && <ChevronRight size={18} />}
           </button>
         }
       >
+        <ol className="add-progress" aria-label="Progression de l’ajout">
+          <li className="is-complete"><span><Check size={12} /></span> Type</li>
+          <li className={photoData ? 'is-complete' : 'is-current'} aria-current={!photoData ? 'step' : undefined}>
+            <span>{photoData ? <Check size={12} /> : '2'}</span> Photo
+          </li>
+          <li className={photoData ? 'is-current' : ''} aria-current={photoData ? 'step' : undefined}><span>3</span> Ajouter</li>
+        </ol>
         <fieldset className="category-picker category-picker--first">
           <legend>Quelle pièce voulez-vous isoler ?</legend>
           <div>
@@ -1840,6 +1933,7 @@ function App() {
             <RefreshCw size={16} className="spin-icon" />
             <div>
               <p>{UPLOAD_PROGRESS_MESSAGES[progressMessageIndex]}</p>
+              <small>La première préparation peut prendre quelques secondes. Gardez l’application ouverte.</small>
               <span className="upload-progress"><span /></span>
             </div>
           </div>
@@ -1853,6 +1947,7 @@ function App() {
             </div>
           </div>
         )}
+        {addError && <p className="form-error form-error--upload" role="alert">{addError}</p>}
         {photoData ? (
           <div className="photo-preview">
             <img src={photoData} alt="Aperçu de la pièce à ajouter" />
@@ -1887,9 +1982,11 @@ function App() {
           value={addName}
           onChange={(event) => setAddName(event.target.value)}
           placeholder="Ex. : Pull col roulé bleu marine"
+          enterKeyHint="done"
+          autoCapitalize="sentences"
+          maxLength={80}
         />
         <p className="ai-helper"><Sparkles size={14} /> L’analyse automatique pourra compléter son nom et sa couleur.</p>
-        {addError && <p className="form-error" role="alert">{addError}</p>}
       </Sheet>
 
       <Sheet
