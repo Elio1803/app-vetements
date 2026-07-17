@@ -2952,9 +2952,21 @@ select {
   }
 
   .occasion-grid label:not(.is-active) {
-    border-color: #c9c1b5;
-    background: #f4efe7;
-    color: #302e2a;
+    border: 2px solid #81786e;
+    background: #ffffff;
+    color: #101114 !important;
+  }
+
+  .occasion-grid label:not(.is-active) .occasion-label-long,
+  .occasion-grid label:not(.is-active) .occasion-label-short {
+    color: #101114 !important;
+    font-weight: 700;
+    opacity: 1;
+  }
+
+  .occasion-grid .occasion-label-short {
+    font-size: 0.7rem;
+    font-weight: 700;
   }
 
   .occasion-grid label:not(.is-active) .occasion-icon {
@@ -2963,13 +2975,15 @@ select {
   }
 
   .note-field {
-    border-color: #c9c1b5;
-    background: #f4efe7;
+    border: 2px solid #81786e;
+    background: #ffffff;
     color: #201f1b;
+    font-size: 0.84rem;
   }
 
   .note-field::placeholder {
-    color: #676159;
+    color: #3f3a35;
+    font-weight: 600;
     opacity: 1;
   }
 
