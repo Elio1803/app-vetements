@@ -1,5 +1,10 @@
-import { authenticatedContext } from "../_shared/auth.ts";
 import {
+  authenticatedContext,
+  enforceApiRateLimit,
+} from "../_shared/auth.ts";
+import { validateUploadedImage } from "../_shared/images.ts";
+import {
+  assertAdvertisedRequestSize,
   errorResponse,
   guardRequest,
   HttpError,
@@ -22,6 +27,7 @@ function requiredRemoveBgKey(): string {
 }
 
 async function readImageFile(request: Request): Promise<File> {
+  assertAdvertisedRequestSize(request, MAX_IMAGE_BYTES + 128 * 1024);
   const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
   if (!contentType.includes("multipart/form-data")) {
     throw new HttpError(
@@ -36,14 +42,9 @@ async function readImageFile(request: Request): Promise<File> {
   if (!(image instanceof File)) {
     throw new HttpError(400, "IMAGE_REQUIRED", "Image file is required.");
   }
-  if (!image.type.startsWith("image/")) {
-    throw new HttpError(400, "INVALID_IMAGE", "File must be an image.");
-  }
-  if (image.size > MAX_IMAGE_BYTES) {
-    throw new HttpError(413, "IMAGE_TOO_LARGE", "Image must be 12 MB or smaller.");
-  }
+  const mediaType = await validateUploadedImage(image, MAX_IMAGE_BYTES);
 
-  return image;
+  return new File([image], "clothing-upload", { type: mediaType });
 }
 
 async function removeBackgroundWithRemoveBg(image: File): Promise<Blob> {
@@ -63,8 +64,8 @@ async function removeBackgroundWithRemoveBg(image: File): Promise<Blob> {
   });
 
   if (!response.ok) {
-    const message = await response.text().catch(() => "");
-    console.error("remove.bg request failed:", response.status, message.slice(0, 300));
+    await response.body?.cancel();
+    console.error("remove.bg request failed:", response.status);
     if (response.status === 402) {
       throw new HttpError(402, "REMOVE_BG_CREDITS_REQUIRED", "remove.bg credits are required.");
     }
@@ -73,8 +74,15 @@ async function removeBackgroundWithRemoveBg(image: File): Promise<Blob> {
     }
     throw new HttpError(502, "REMOVE_BG_FAILED", "remove.bg could not process this image.");
   }
-
-  return await response.blob();
+  const result = await response.blob();
+  const mediaType = await validateUploadedImage(
+    new File([result], "remove-bg-result", { type: result.type }),
+    MAX_IMAGE_BYTES,
+  );
+  if (mediaType !== "image/jpeg") {
+    throw new HttpError(502, "REMOVE_BG_INVALID_IMAGE", "remove.bg returned an invalid image.");
+  }
+  return result;
 }
 
 async function blobAsDataUrl(blob: Blob): Promise<string> {
@@ -96,7 +104,8 @@ export default {
     if (guarded) return guarded;
 
     try {
-      await authenticatedContext(request);
+      const { client } = await authenticatedContext(request);
+      await enforceApiRateLimit(client, "remove_background");
       const image = await readImageFile(request);
       const result = await removeBackgroundWithRemoveBg(image);
       const imageDataUrl = await blobAsDataUrl(result);

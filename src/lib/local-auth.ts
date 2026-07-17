@@ -126,8 +126,11 @@ export async function createLocalAccount(email: string, password: string, profil
   if (!normalizedEmail || !normalizedEmail.includes('@')) {
     throw new LocalAuthError('Saisissez une adresse e-mail valide.')
   }
-  if (password.length < 8) {
-    throw new LocalAuthError('Le mot de passe doit contenir au moins 8 caractères.')
+  if (password.length < 10) {
+    throw new LocalAuthError('Le mot de passe doit contenir au moins 10 caractères.')
+  }
+  if (password.length > 128) {
+    throw new LocalAuthError('Le mot de passe est trop long.')
   }
   const normalizedProfileName = normalizeProfileName(profileName)
   if (!normalizedProfileName) {

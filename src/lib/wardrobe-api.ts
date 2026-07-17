@@ -162,7 +162,9 @@ export class SupabaseWardrobeApi implements WardrobeApi {
     });
     const body = await response.text();
     if (!response.ok) {
-      throw new Error(`Supabase ${response.status}: ${body || response.statusText}`);
+      // Do not surface database/provider details in the browser UI. Status is
+      // enough for diagnostics while the backend keeps the precise event log.
+      throw new Error(`La requête sécurisée a échoué (${response.status}).`);
     }
     return parseJsonText(body);
   }

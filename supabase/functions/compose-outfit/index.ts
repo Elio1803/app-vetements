@@ -1,5 +1,8 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
-import { authenticatedContext } from "../_shared/auth.ts";
+import {
+  authenticatedContext,
+  enforceApiRateLimit,
+} from "../_shared/auth.ts";
 import {
   errorResponse,
   guardRequest,
@@ -33,7 +36,10 @@ interface FalQueuedResponse {
 const MAX_ITEM_COUNT = 5;
 const MAX_PROVIDER_WAIT_MS = 70_000;
 const PROVIDER_POLL_INTERVAL_MS = 1_400;
+const MAX_PROVIDER_RESPONSE_BYTES = 512 * 1024;
 const DEFAULT_MODEL = "fal-ai/fashn/tryon";
+const UUID_PATTERN =
+  /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function requiredFalKey(): string {
   const value = Deno.env.get("FAL_API_KEY")?.trim();
@@ -49,7 +55,7 @@ function requiredFalKey(): string {
 
 function mannequinReferenceUrl(): string {
   const value = Deno.env.get("TRYON_MODEL_IMAGE_URL")?.trim();
-  if (!value || !/^https?:\/\//i.test(value)) {
+  if (!value || !/^https:\/\//i.test(value)) {
     throw new HttpError(
       501,
       "TRYON_MANNEQUIN_NOT_CONFIGURED",
@@ -61,18 +67,31 @@ function mannequinReferenceUrl(): string {
 
 function falModelEndpoint(): string {
   const model = Deno.env.get("FAL_TRYON_MODEL")?.trim() || DEFAULT_MODEL;
-  const base = (Deno.env.get("FAL_API_BASE")?.trim() || "https://fal.run").replace(/\/$/, "");
-  return `${base}/${model.replace(/^\/+/, "")}`;
+  if (!/^[a-z0-9._/-]{1,160}$/i.test(model) || model.includes("..")) {
+    throw new HttpError(500, "SERVER_CONFIGURATION_ERROR", "The try-on provider is misconfigured.");
+  }
+  const rawBase = (Deno.env.get("FAL_API_BASE")?.trim() || "https://fal.run").replace(/\/$/, "");
+  let base: URL;
+  try {
+    base = new URL(rawBase);
+  } catch {
+    throw new HttpError(500, "SERVER_CONFIGURATION_ERROR", "The try-on provider is misconfigured.");
+  }
+  const trustedHost = base.hostname === "fal.run" || base.hostname.endsWith(".fal.run");
+  if (base.protocol !== "https:" || !trustedHost || base.username || base.password) {
+    throw new HttpError(500, "SERVER_CONFIGURATION_ERROR", "The try-on provider is misconfigured.");
+  }
+  return new URL(model.replace(/^\/+/, ""), `${base.href.replace(/\/$/, "")}/`).href;
 }
 
 function itemIdsFromBody(body: unknown): string[] {
   if (!isRecord(body) || !Array.isArray(body.itemIds)) {
     throw new HttpError(400, "INVALID_REQUEST", "itemIds must be an array.");
   }
-  const ids = body.itemIds
-    .filter((value): value is string => typeof value === "string")
-    .map((value) => value.trim())
-    .filter(Boolean);
+  if (body.itemIds.some((value) => typeof value !== "string")) {
+    throw new HttpError(400, "INVALID_ITEM_ID", "Every itemId must be a UUID.");
+  }
+  const ids = (body.itemIds as string[]).map((value) => value.trim());
 
   if (ids.length === 0 || ids.length > MAX_ITEM_COUNT) {
     throw new HttpError(
@@ -83,6 +102,9 @@ function itemIdsFromBody(body: unknown): string[] {
   }
   if (new Set(ids).size !== ids.length) {
     throw new HttpError(400, "DUPLICATE_ITEMS", "itemIds must be unique.");
+  }
+  if (ids.some((id) => !UUID_PATTERN.test(id))) {
+    throw new HttpError(400, "INVALID_ITEM_ID", "Every itemId must be a UUID.");
   }
   return ids;
 }
@@ -141,7 +163,6 @@ async function itemImageReference(
   userId: string,
   item: ClothingRow,
 ): Promise<string> {
-  if (/^https?:\/\//i.test(item.photo_url)) return item.photo_url;
   const path = assertOwnedObjectPath(item.photo_url, userId);
   const encoded = await downloadEncodedImage(client, path);
   return `data:${encoded.mediaType};base64,${encoded.data}`;
@@ -180,7 +201,33 @@ function extractImageUrl(value: unknown): string | null {
 }
 
 async function readJsonResponse(response: Response): Promise<unknown> {
-  const text = await response.text();
+  const advertisedLength = Number(response.headers.get("content-length"));
+  if (Number.isFinite(advertisedLength) && advertisedLength > MAX_PROVIDER_RESPONSE_BYTES) {
+    await response.body?.cancel();
+    throw new HttpError(502, "TRYON_PROVIDER_RESPONSE_TOO_LARGE", "The try-on provider returned too much data.");
+  }
+  const reader = response.body?.getReader();
+  const chunks: Uint8Array[] = [];
+  let receivedBytes = 0;
+  if (reader) {
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      receivedBytes += value.byteLength;
+      if (receivedBytes > MAX_PROVIDER_RESPONSE_BYTES) {
+        await reader.cancel();
+        throw new HttpError(502, "TRYON_PROVIDER_RESPONSE_TOO_LARGE", "The try-on provider returned too much data.");
+      }
+      chunks.push(value);
+    }
+  }
+  const bytes = new Uint8Array(receivedBytes);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const text = new TextDecoder("utf-8", { fatal: true }).decode(bytes);
   if (!text.trim()) return null;
   try {
     return JSON.parse(text) as unknown;
@@ -194,23 +241,56 @@ function isQueuedResponse(value: unknown): value is FalQueuedResponse {
     (typeof value.response_url === "string" || typeof value.status_url === "string");
 }
 
+function trustedFalQueueUrl(value: string): string {
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new HttpError(502, "TRYON_PROVIDER_URL_INVALID", "The try-on provider returned an invalid URL.");
+  }
+  const trustedHost = url.hostname === "fal.run" || url.hostname.endsWith(".fal.run");
+  if (url.protocol !== "https:" || !trustedHost || url.username || url.password) {
+    throw new HttpError(502, "TRYON_PROVIDER_URL_FORBIDDEN", "The try-on provider returned an unsafe URL.");
+  }
+  return url.href;
+}
+
+function trustedFalImageUrl(value: string): string {
+  if (/^data:image\/(?:jpeg|png|webp);base64,[a-z0-9+/=]+$/i.test(value)) {
+    return value;
+  }
+  let url: URL;
+  try {
+    url = new URL(value);
+  } catch {
+    throw new HttpError(502, "TRYON_IMAGE_URL_INVALID", "The try-on provider returned an invalid image URL.");
+  }
+  const trustedHost = url.hostname === "fal.media" || url.hostname.endsWith(".fal.media");
+  if (url.protocol !== "https:" || !trustedHost || url.username || url.password) {
+    throw new HttpError(502, "TRYON_IMAGE_URL_FORBIDDEN", "The try-on provider returned an unsafe image URL.");
+  }
+  return url.href;
+}
+
 async function pollQueuedFalResult(
   queued: FalQueuedResponse,
   headers: HeadersInit,
 ): Promise<unknown> {
   const deadline = Date.now() + MAX_PROVIDER_WAIT_MS;
-  let nextUrl = queued.response_url ?? queued.status_url;
+  let nextUrl = trustedFalQueueUrl(queued.response_url ?? queued.status_url ?? "");
 
   while (nextUrl && Date.now() < deadline) {
     await new Promise((resolve) => setTimeout(resolve, PROVIDER_POLL_INTERVAL_MS));
     const response = await fetch(nextUrl, { headers });
     const data = await readJsonResponse(response);
     if (response.status === 202) {
-      if (isRecord(data) && typeof data.response_url === "string") nextUrl = data.response_url;
+      if (isRecord(data) && typeof data.response_url === "string") {
+        nextUrl = trustedFalQueueUrl(data.response_url);
+      }
       continue;
     }
     if (!response.ok) {
-      console.error("FAL queued request failed:", response.status, JSON.stringify(data).slice(0, 300));
+      console.error("FAL queued request failed:", response.status);
       throw new HttpError(502, "TRYON_PROVIDER_FAILED", "The try-on provider failed.");
     }
     return data;
@@ -227,6 +307,9 @@ async function callFalTryOn(
   const headers = {
     Authorization: `Key ${requiredFalKey()}`,
     "Content-Type": "application/json",
+    "X-Fal-Object-Lifecycle-Preference": JSON.stringify({
+      expiration_duration_seconds: 86400,
+    }),
   };
 
   const response = await fetch(falModelEndpoint(), {
@@ -243,17 +326,17 @@ async function callFalTryOn(
 
   const data = await readJsonResponse(response);
   if (!response.ok) {
-    console.error("FAL try-on failed:", response.status, JSON.stringify(data).slice(0, 300));
+    console.error("FAL try-on failed:", response.status);
     throw new HttpError(502, "TRYON_PROVIDER_FAILED", "The try-on provider failed.");
   }
 
   const result = isQueuedResponse(data) ? await pollQueuedFalResult(data, headers) : data;
   const imageUrl = extractImageUrl(result);
   if (!imageUrl) {
-    console.error("FAL try-on response without image:", JSON.stringify(result).slice(0, 300));
+    console.error("FAL try-on response did not contain an image.");
     throw new HttpError(502, "TRYON_IMAGE_MISSING", "The try-on provider returned no image.");
   }
-  return imageUrl;
+  return trustedFalImageUrl(imageUrl);
 }
 
 async function composeOutfit(
@@ -276,6 +359,7 @@ export default {
 
     try {
       const { client, user } = await authenticatedContext(request);
+      await enforceApiRateLimit(client, "compose_outfit");
       const body = await readJsonBody(request);
       const itemIds = itemIdsFromBody(body);
       const items = await loadOwnedItems(client, itemIds);

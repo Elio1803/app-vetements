@@ -1,4 +1,7 @@
 const LOCAL_ORIGINS = new Set([
+  "https://elio1803.github.io",
+  "http://localhost:4173",
+  "http://127.0.0.1:4173",
   "http://localhost:5173",
   "http://127.0.0.1:5173",
 ]);
@@ -16,10 +19,11 @@ export class HttpError extends Error {
   }
 }
 
-function configuredOrigins(): Set<string> | "*" {
+function configuredOrigins(): Set<string> {
   const value = Deno.env.get("ALLOWED_ORIGINS")?.trim();
   if (!value) return LOCAL_ORIGINS;
-  if (value === "*") return "*";
+  // Never silently turn authenticated endpoints into wildcard CORS routes.
+  if (value === "*") return LOCAL_ORIGINS;
 
   return new Set(
     value.split(",").map((origin) => origin.trim()).filter(Boolean),
@@ -31,20 +35,23 @@ export function isOriginAllowed(request: Request): boolean {
   if (!origin) return true;
 
   const allowed = configuredOrigins();
-  return allowed === "*" || allowed.has(origin);
+  return allowed.has(origin);
 }
 
 function responseHeaders(request: Request): Headers {
   const headers = new Headers({
     "Cache-Control": "no-store",
     "Content-Type": "application/json; charset=utf-8",
+    "Cross-Origin-Resource-Policy": "same-site",
+    "Referrer-Policy": "no-referrer",
+    "X-Frame-Options": "DENY",
     "X-Content-Type-Options": "nosniff",
   });
   const origin = request.headers.get("origin");
   const allowed = configuredOrigins();
 
-  if (origin && (allowed === "*" || allowed.has(origin))) {
-    headers.set("Access-Control-Allow-Origin", allowed === "*" ? "*" : origin);
+  if (origin && allowed.has(origin)) {
+    headers.set("Access-Control-Allow-Origin", origin);
     headers.set("Vary", "Origin");
   }
 
@@ -90,6 +97,22 @@ export function guardRequest(request: Request): Response | null {
   }
 
   return null;
+}
+
+export function assertAdvertisedRequestSize(
+  request: Request,
+  maximumBytes: number,
+): void {
+  const rawLength = request.headers.get("content-length");
+  if (!rawLength) return;
+  const advertisedLength = Number(rawLength);
+  if (
+    !Number.isSafeInteger(advertisedLength) ||
+    advertisedLength < 0 ||
+    advertisedLength > maximumBytes
+  ) {
+    throw new HttpError(413, "REQUEST_TOO_LARGE", "Request body is too large.");
+  }
 }
 
 export async function readJsonBody(request: Request): Promise<unknown> {
@@ -139,9 +162,11 @@ export async function readJsonBody(request: Request): Promise<unknown> {
 
 export function errorResponse(request: Request, error: unknown): Response {
   if (error instanceof HttpError) {
-    return jsonResponse(request, error.status, {
+    const response = jsonResponse(request, error.status, {
       error: { code: error.code, message: error.message },
     });
+    if (error.status === 429) response.headers.set("Retry-After", "60");
+    return response;
   }
 
   console.error(

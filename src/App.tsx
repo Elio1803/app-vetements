@@ -1092,6 +1092,8 @@ function App() {
   const signIn = async (email: string, password: string, createAccount: boolean, profileName: string) => {
     const chosenProfileName = normalizeProfileName(profileName)
     if (createAccount && !chosenProfileName) return 'Indiquez votre prénom ou votre nom.'
+    if (createAccount && password.length < 10) return 'Le mot de passe doit contenir au moins dix caractères.'
+    if (password.length > 128) return 'Le mot de passe est trop long.'
     if (!supabase) {
       try {
         const session = createAccount
@@ -1133,7 +1135,8 @@ function App() {
 
   const saveRecoveredPassword = async (password: string) => {
     if (!supabase) return 'La réinitialisation en ligne est indisponible.'
-    if (password.length < 8) return 'Le mot de passe doit contenir au moins huit caractères.'
+    if (password.length < 10) return 'Le mot de passe doit contenir au moins dix caractères.'
+    if (password.length > 128) return 'Le mot de passe est trop long.'
     const { error } = await supabase.auth.updateUser({ password })
     if (error) {
       return /same password/i.test(error.message)

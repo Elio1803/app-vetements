@@ -1,24 +1,24 @@
 project_id = "le-dressing"
 
 [functions.analyze-clothing]
-# Authentication is verified in the handler with Auth.getUser(). Disabling the
-# legacy gateway verifier keeps asymmetric Supabase signing keys compatible.
-verify_jwt = false
+# Reject unauthenticated traffic at the Supabase gateway, then verify the user
+# again in the handler before any database or provider operation.
+verify_jwt = true
 
 [functions.generate-outfits]
-verify_jwt = false
+verify_jwt = true
 
 [functions.compose-outfit]
-verify_jwt = false
+verify_jwt = true
 
 [functions.sync-clothing-item]
-verify_jwt = false
+verify_jwt = true
 
 [functions.list-clothing-items]
-verify_jwt = false
+verify_jwt = true
 
 [functions.remove-background]
-verify_jwt = false
+verify_jwt = true
 
 [functions.send-welcome-email]
-verify_jwt = false
+verify_jwt = true

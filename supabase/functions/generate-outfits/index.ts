@@ -7,6 +7,7 @@ import {
 import {
   adminClient,
   authenticatedContext,
+  enforceApiRateLimit,
   enforceAiQuota,
 } from "../_shared/auth.ts";
 import {
@@ -16,6 +17,7 @@ import {
   integerFromEnv,
   isOutfitOccasion,
   isRecord,
+  optionalBoundedString,
   type OutfitOccasion,
 } from "../_shared/domain.ts";
 import {
@@ -105,6 +107,20 @@ function weatherFromRequest(value: unknown): WeatherContext | null {
   if (numericFields.some((field) => typeof value[field] !== "number" || !Number.isFinite(value[field]))) {
     throw new HttpError(400, "INVALID_WEATHER", "weather contains invalid values.");
   }
+  const temperatureC = value.temperatureC as number;
+  const apparentTemperatureC = value.apparentTemperatureC as number;
+  const precipitationMm = value.precipitationMm as number;
+  const weatherCode = value.weatherCode as number;
+  const windSpeedKmh = value.windSpeedKmh as number;
+  if (
+    temperatureC < -100 || temperatureC > 70 ||
+    apparentTemperatureC < -120 || apparentTemperatureC > 80 ||
+    precipitationMm < 0 || precipitationMm > 1000 ||
+    !Number.isInteger(weatherCode) || weatherCode < 0 || weatherCode > 99 ||
+    windSpeedKmh < 0 || windSpeedKmh > 500
+  ) {
+    throw new HttpError(400, "INVALID_WEATHER", "weather values are out of range.");
+  }
   const conditions = ["clear", "cloudy", "fog", "rain", "snow", "storm"];
   if (
     typeof value.condition !== "string" ||
@@ -116,11 +132,11 @@ function weatherFromRequest(value: unknown): WeatherContext | null {
     throw new HttpError(400, "INVALID_WEATHER", "weather context is invalid.");
   }
   return {
-    temperatureC: value.temperatureC as number,
-    apparentTemperatureC: value.apparentTemperatureC as number,
-    precipitationMm: value.precipitationMm as number,
-    weatherCode: value.weatherCode as number,
-    windSpeedKmh: value.windSpeedKmh as number,
+    temperatureC,
+    apparentTemperatureC,
+    precipitationMm,
+    weatherCode,
+    windSpeedKmh,
     condition: value.condition as WeatherContext["condition"],
     observedAt: value.observedAt,
     source: "open-meteo",
@@ -441,6 +457,7 @@ export default {
 
     try {
       const { client, user } = await authenticatedContext(request);
+      await enforceApiRateLimit(client, "generate_outfits");
       const body = await readJsonBody(request);
       if (!isRecord(body)) {
         throw new HttpError(400, "INVALID_REQUEST", "Request body must be an object.");
@@ -448,12 +465,11 @@ export default {
       if (!isOutfitOccasion(body.occasion)) {
         throw new HttpError(400, "INVALID_OCCASION", "Unknown outfit occasion.");
       }
-      if (body.note !== undefined && body.note !== null && typeof body.note !== "string") {
-        throw new HttpError(400, "INVALID_NOTE", "note must be a string.");
-      }
-      const note = typeof body.note === "string" ? body.note.trim() : "";
-      if (note.length > 500) {
-        throw new HttpError(400, "INVALID_NOTE", "note must not exceed 500 characters.");
+      let note = "";
+      try {
+        note = optionalBoundedString(body.note, "note", 500) ?? "";
+      } catch {
+        throw new HttpError(400, "INVALID_NOTE", "note is invalid.");
       }
       const weather = weatherFromRequest(body.weather);
       if (typeof body.requestId !== "string" || !UUID_PATTERN.test(body.requestId)) {

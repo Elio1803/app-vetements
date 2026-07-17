@@ -38,7 +38,7 @@ export function assertOwnedObjectPath(value: unknown, userId: string): string {
   return value;
 }
 
-function detectedMediaType(bytes: Uint8Array): SupportedImageMediaType | null {
+export function detectedMediaType(bytes: Uint8Array): SupportedImageMediaType | null {
   if (
     bytes.length >= 3 &&
     bytes[0] === 0xff &&
@@ -81,6 +81,38 @@ function detectedMediaType(bytes: Uint8Array): SupportedImageMediaType | null {
   ) return "image/webp";
 
   return null;
+}
+
+export async function validateUploadedImage(
+  file: File,
+  maximumBytes: number,
+): Promise<Exclude<SupportedImageMediaType, "image/gif">> {
+  if (file.size === 0 || file.size > maximumBytes) {
+    throw new HttpError(413, "IMAGE_TOO_LARGE", "Image exceeds the size limit.");
+  }
+
+  const header = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+  const detected = detectedMediaType(header);
+  if (!detected || detected === "image/gif") {
+    throw new HttpError(
+      415,
+      "UNSUPPORTED_IMAGE",
+      "Image must be JPEG, PNG, or WebP.",
+    );
+  }
+
+  const declared = file.type.toLowerCase() === "image/jpg"
+    ? "image/jpeg"
+    : file.type.toLowerCase();
+  if (declared && declared !== detected) {
+    throw new HttpError(
+      415,
+      "IMAGE_TYPE_MISMATCH",
+      "Image content does not match its declared type.",
+    );
+  }
+
+  return detected;
 }
 
 function encodeBase64(bytes: Uint8Array): string {

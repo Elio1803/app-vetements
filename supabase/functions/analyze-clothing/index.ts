@@ -1,6 +1,7 @@
 import { callAnthropicJson, imageBlock } from "../_shared/anthropic.ts";
 import {
   authenticatedContext,
+  enforceApiRateLimit,
   enforceAiQuota,
 } from "../_shared/auth.ts";
 import {
@@ -45,6 +46,7 @@ export default {
 
     try {
       const { client, user } = await authenticatedContext(request);
+      await enforceApiRateLimit(client, "analyze_clothing");
       const body = await readJsonBody(request);
       if (!isRecord(body)) {
         throw new HttpError(400, "INVALID_REQUEST", "Request body must be an object.");

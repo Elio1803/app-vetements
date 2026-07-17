@@ -11,6 +11,14 @@ export interface AuthenticatedContext {
 }
 
 export type AiQuotaAction = "analyze_clothing" | "generate_outfits";
+export type ApiRateLimitAction =
+  | "remove_background"
+  | "analyze_clothing"
+  | "generate_outfits"
+  | "compose_outfit"
+  | "sync_clothing_item"
+  | "list_clothing_items"
+  | "send_welcome_email";
 
 function requiredEnvironmentValue(name: string): string {
   const value = Deno.env.get(name)?.trim();
@@ -121,6 +129,30 @@ export async function enforceAiQuota(
       429,
       "AI_RATE_LIMITED",
       "Hourly AI request limit reached. Try again later.",
+    );
+  }
+}
+
+export async function enforceApiRateLimit(
+  client: SupabaseClient,
+  action: ApiRateLimitAction,
+): Promise<void> {
+  const { data, error } = await client.rpc("consume_api_rate_limit", {
+    p_action: action,
+  });
+  if (error) {
+    console.error("Unable to enforce API rate limit:", error.code);
+    throw new HttpError(
+      500,
+      "RATE_LIMIT_CHECK_FAILED",
+      "Unable to check request limit.",
+    );
+  }
+  if (data !== true) {
+    throw new HttpError(
+      429,
+      "RATE_LIMITED",
+      "Too many requests. Wait a moment before trying again.",
     );
   }
 }

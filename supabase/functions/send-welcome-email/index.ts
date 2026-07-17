@@ -1,4 +1,8 @@
-import { adminClient, authenticatedContext } from "../_shared/auth.ts";
+import {
+  adminClient,
+  authenticatedContext,
+  enforceApiRateLimit,
+} from "../_shared/auth.ts";
 import {
   errorResponse,
   guardRequest,
@@ -34,7 +38,8 @@ export default {
     if (guarded) return guarded;
 
     try {
-      const { user } = await authenticatedContext(request);
+      const { client, user } = await authenticatedContext(request);
+      await enforceApiRateLimit(client, "send_welcome_email");
       if (!user.email) {
         throw new HttpError(422, "EMAIL_MISSING", "The account has no email address.");
       }

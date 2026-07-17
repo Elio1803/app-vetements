@@ -43,12 +43,24 @@ export function boundedString(
     throw new Error(`${field} must be a string`);
   }
 
-  const normalized = value.trim();
+  const normalized = value.trim().replace(/\s+/g, " ");
   if (normalized.length === 0 || normalized.length > maxLength) {
     throw new Error(`${field} has an invalid length`);
   }
+  if (/[\u0000-\u001f\u007f]/.test(normalized)) {
+    throw new Error(`${field} contains control characters`);
+  }
 
   return normalized;
+}
+
+export function optionalBoundedString(
+  value: unknown,
+  field: string,
+  maxLength: number,
+): string | null {
+  if (value === undefined || value === null || value === "") return null;
+  return boundedString(value, field, maxLength);
 }
 
 export function integerFromEnv(

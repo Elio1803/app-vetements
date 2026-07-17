@@ -1,6 +1,16 @@
-import { adminClient, authenticatedContext } from "../_shared/auth.ts";
-import { CLOTHING_BUCKET } from "../_shared/images.ts";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import {
+  adminClient,
+  authenticatedContext,
+  enforceApiRateLimit,
+} from "../_shared/auth.ts";
+import {
+  CLOTHING_BUCKET,
+  type SupportedImageMediaType,
+  validateUploadedImage,
+} from "../_shared/images.ts";
+import {
+  assertAdvertisedRequestSize,
   errorResponse,
   guardRequest,
   HttpError,
@@ -8,30 +18,40 @@ import {
 } from "../_shared/http.ts";
 import {
   isClothingCategory,
+  optionalBoundedString,
   type ClothingCategory,
 } from "../_shared/domain.ts";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 
-function optionalText(value: FormDataEntryValue | null, maxLength: number): string | null {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim();
-  if (!normalized) return null;
-  return normalized.slice(0, maxLength);
+interface SafeImageUpload {
+  file: File;
+  mediaType: Exclude<SupportedImageMediaType, "image/gif">;
 }
 
-async function imageFromForm(formData: FormData): Promise<File> {
+function optionalText(
+  value: FormDataEntryValue | null,
+  field: string,
+  maxLength: number,
+): string | null {
+  if (value === null || value === "") return null;
+  if (typeof value !== "string") {
+    throw new HttpError(400, "INVALID_TEXT_FIELD", `${field} must be text.`);
+  }
+  try {
+    return optionalBoundedString(value, field, maxLength);
+  } catch {
+    throw new HttpError(400, "INVALID_TEXT_FIELD", `${field} is invalid.`);
+  }
+}
+
+async function imageFromForm(formData: FormData): Promise<SafeImageUpload> {
   const image = formData.get("image");
   if (!(image instanceof File)) {
     throw new HttpError(400, "IMAGE_REQUIRED", "Image file is required.");
   }
-  if (!image.type.startsWith("image/")) {
-    throw new HttpError(400, "INVALID_IMAGE", "File must be an image.");
-  }
-  if (image.size === 0 || image.size > MAX_IMAGE_BYTES) {
-    throw new HttpError(413, "IMAGE_TOO_LARGE", "Image must be 5 MB or smaller.");
-  }
-  return image;
+  const mediaType = await validateUploadedImage(image, MAX_IMAGE_BYTES);
+  return { file: image, mediaType };
 }
 
 function categoryFromForm(formData: FormData): ClothingCategory {
@@ -47,7 +67,7 @@ function optionalUuid(value: FormDataEntryValue | null): string | null {
   const normalized = value.trim();
   if (!normalized) return null;
   if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(normalized)) {
-    return null;
+    throw new HttpError(400, "INVALID_CLIENT_ITEM_ID", "clientItemId must be a UUID.");
   }
   return normalized;
 }
@@ -65,50 +85,8 @@ async function ensurePublicUser(userId: string, email: string | null): Promise<v
     .upsert(profilePayload, { onConflict: "id" });
 
   if (!upsertError) return;
-
-  // Older test accounts can leave a stale public.users row with the same e-mail
-  // but a different auth id. In that case, free the e-mail and retry with the
-  // current authenticated id so wardrobe sync is not blocked on mobile.
-  if (normalizedEmail && upsertError.code === "23505") {
-    const { error: releaseEmailError } = await client
-      .from("users")
-      .update({ email: `stale-${crypto.randomUUID()}@local.invalid` })
-      .ilike("email", normalizedEmail)
-      .neq("id", userId);
-
-    if (releaseEmailError) {
-      console.warn(
-        "Unable to release stale user e-mail:",
-        releaseEmailError.code,
-        releaseEmailError.message,
-      );
-    }
-
-    const { error: retryError } = await client
-      .from("users")
-      .upsert(profilePayload, { onConflict: "id" });
-
-    if (!retryError) return;
-    console.error("Unable to ensure public user after retry:", retryError.code, retryError.message);
-    throw new HttpError(
-      500,
-      "USER_SYNC_FAILED",
-      `Profil bloqué après nettoyage (${retryError.code ?? "no_code"}): ${
-        retryError.message ?? "erreur inconnue"
-      }`,
-    );
-  }
-
-  if (upsertError) {
-    console.error("Unable to ensure public user:", upsertError.code, upsertError.message);
-    throw new HttpError(
-      500,
-      "USER_SYNC_FAILED",
-      `Profil bloqué (${upsertError.code ?? "no_code"}): ${
-        upsertError.message ?? "erreur inconnue"
-      }`,
-    );
-  }
+  console.error("Unable to ensure public user:", upsertError.code);
+  throw new HttpError(500, "USER_SYNC_FAILED", "Unable to prepare user profile.");
 }
 
 export default {
@@ -117,8 +95,12 @@ export default {
     if (guarded) return guarded;
 
     let uploadedPath: string | null = null;
+    let authenticatedClient: SupabaseClient | null = null;
     try {
-      const { user } = await authenticatedContext(request);
+      const { client, user } = await authenticatedContext(request);
+      authenticatedClient = client;
+      await enforceApiRateLimit(client, "sync_clothing_item");
+      assertAdvertisedRequestSize(request, MAX_IMAGE_BYTES + 128 * 1024);
       const contentType = request.headers.get("content-type")?.toLowerCase() ?? "";
       if (!contentType.includes("multipart/form-data")) {
         throw new HttpError(
@@ -132,9 +114,12 @@ export default {
       const image = await imageFromForm(formData);
       const category = categoryFromForm(formData);
       const clientItemId = optionalUuid(formData.get("clientItemId"));
-      const name = optionalText(formData.get("name"), 160);
-      const colorDominant = optionalText(formData.get("colorDominant"), 80);
-      const client = adminClient();
+      const name = optionalText(formData.get("name"), "name", 160);
+      const colorDominant = optionalText(
+        formData.get("colorDominant"),
+        "colorDominant",
+        80,
+      );
 
       await ensurePublicUser(user.id, user.email ?? null);
 
@@ -160,25 +145,23 @@ export default {
         }
       }
 
-      const extension = image.type.includes("png")
+      const extension = image.mediaType === "image/png"
         ? "png"
-        : image.type.includes("webp")
+        : image.mediaType === "image/webp"
           ? "webp"
-          : image.type.includes("gif")
-            ? "gif"
-            : "jpg";
+          : "jpg";
       uploadedPath = `${user.id}/${crypto.randomUUID()}.${extension}`;
 
       const { error: uploadError } = await client.storage
         .from(CLOTHING_BUCKET)
-        .upload(uploadedPath, image, {
-          contentType: image.type || "image/jpeg",
+        .upload(uploadedPath, image.file, {
+          contentType: image.mediaType,
           cacheControl: "3600",
           upsert: false,
         });
 
       if (uploadError) {
-        console.error("Unable to upload clothing photo:", uploadError.message);
+        console.error("Unable to upload clothing photo.");
         throw new HttpError(500, "PHOTO_UPLOAD_FAILED", "Unable to upload clothing photo.");
       }
 
@@ -207,8 +190,9 @@ export default {
         photoPath: uploadedPath,
       });
     } catch (error) {
-      if (uploadedPath) {
-        await adminClient().storage.from(CLOTHING_BUCKET).remove([uploadedPath]).catch(() => undefined);
+      if (uploadedPath && authenticatedClient) {
+        await authenticatedClient.storage.from(CLOTHING_BUCKET).remove([uploadedPath])
+          .catch(() => undefined);
       }
       return errorResponse(request, error);
     }

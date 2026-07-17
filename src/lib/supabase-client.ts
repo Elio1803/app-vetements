@@ -77,20 +77,6 @@ export async function loadRemoteWardrobe(user: User) {
   return resolved.storagePaths
 }
 
-export async function uploadClothingPhoto(dataUrl: string, userId: string) {
-  if (!supabase) throw new Error('Supabase n’est pas configuré.')
-  const response = await fetch(dataUrl)
-  const blob = await response.blob()
-  const path = `${userId}/${crypto.randomUUID()}.jpg`
-  const { error } = await supabase.storage.from('clothing-photos').upload(path, blob, {
-    contentType: 'image/jpeg',
-    cacheControl: '3600',
-    upsert: false,
-  })
-  if (error) throw error
-  return path
-}
-
 export async function syncClothingItemToCloud(input: {
   dataUrl: string
   userId: string

@@ -1,4 +1,4 @@
-const CACHE_NAME = 'le-dressing-v56'
+const CACHE_NAME = 'le-dressing-v57'
 const resolveFromScope = (path) => new URL(path, self.registration.scope).href
 const APP_SHELL = [
   '',
@@ -49,8 +49,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          const copy = response.clone()
-          void caches.open(CACHE_NAME).then((cache) => cache.put(resolveFromScope('index.html'), copy))
+          const contentType = response.headers.get('content-type') || ''
+          if (response.ok && contentType.includes('text/html')) {
+            const copy = response.clone()
+            void caches.open(CACHE_NAME).then((cache) => cache.put(resolveFromScope('index.html'), copy))
+          }
           return response
         })
         .catch(() => caches.match(resolveFromScope('index.html'))),
@@ -62,7 +65,7 @@ self.addEventListener('fetch', (event) => {
     caches.match(request).then((cached) => {
       if (cached) return cached
       return fetch(request).then((response) => {
-        if (response.ok) {
+        if (response.ok && response.type === 'basic') {
           const copy = response.clone()
           void caches.open(CACHE_NAME).then((cache) => cache.put(request, copy))
         }

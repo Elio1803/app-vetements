@@ -91,7 +91,7 @@ export function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenP
               <label className="field-label" htmlFor="password">Mot de passe</label>
               {!createAccount && <button type="button" className="text-link" onClick={resetPassword}>Mot de passe oublié ?</button>}
             </div>
-            <input className="text-field" id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8 caractères minimum" minLength={8} required />
+            <input className="text-field" id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={createAccount ? '10 caractères minimum' : 'Votre mot de passe'} minLength={createAccount ? 10 : 1} maxLength={128} autoComplete={createAccount ? 'new-password' : 'current-password'} required />
             <button className="primary-button auth-submit" type="submit" disabled={busy} aria-busy={busy}>
               {busy ? 'Un instant…' : createAccount ? 'Créer mon compte' : 'Se connecter'}
               {!busy && <ChevronRight size={18} />}
@@ -155,7 +155,7 @@ export function PasswordRecoveryScreen({
         <div className="auth-quote">
           <p className="eyebrow eyebrow--light">Votre compte, bien protégé</p>
           <h1>Un nouveau mot de passe.<br /><em>Votre dressing vous attend.</em></h1>
-          <p>Choisissez un mot de passe personnel d’au moins huit caractères.</p>
+          <p>Choisissez un mot de passe personnel d’au moins dix caractères.</p>
         </div>
       </section>
       <section className="auth-form-wrap">
@@ -184,9 +184,9 @@ export function PasswordRecoveryScreen({
                 <p className="auth-intro">Cette étape est nécessaire avant de retrouver votre dressing.</p>
                 <form onSubmit={submit}>
                   <label className="field-label" htmlFor="new-password">Nouveau mot de passe</label>
-                  <input className="text-field" id="new-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="8 caractères minimum" minLength={8} autoComplete="new-password" required />
+                  <input className="text-field" id="new-password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder="10 caractères minimum" minLength={10} maxLength={128} autoComplete="new-password" required />
                   <label className="field-label password-confirm-label" htmlFor="confirm-password">Confirmer le mot de passe</label>
-                  <input className="text-field" id="confirm-password" type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder="Saisissez-le une seconde fois" minLength={8} autoComplete="new-password" required />
+                  <input className="text-field" id="confirm-password" type="password" value={confirmation} onChange={(event) => setConfirmation(event.target.value)} placeholder="Saisissez-le une seconde fois" minLength={10} maxLength={128} autoComplete="new-password" required />
                   <button className="primary-button auth-submit" type="submit" disabled={busy} aria-busy={busy}>
                     {busy ? 'Enregistrement…' : 'Enregistrer le nouveau mot de passe'}
                     {!busy && <ChevronRight size={18} />}
