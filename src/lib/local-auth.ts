@@ -173,6 +173,24 @@ export async function signInLocalAccount(email: string, password: string) {
   return session
 }
 
+export function updateLocalProfileName(profileName: string): LocalAccountSession {
+  const normalizedProfileName = normalizeProfileName(profileName)
+  if (!normalizedProfileName) throw new LocalAuthError('Choisissez un nom pour votre dressing.')
+
+  const currentSession = getLocalSession()
+  if (!currentSession) throw new LocalAuthError('Votre session a expiré. Reconnectez-vous.')
+
+  const accounts = loadAccounts()
+  const accountIndex = accounts.findIndex((account) => account.userId === currentSession.userId)
+  if (accountIndex < 0) throw new LocalAuthError('Ce compte est introuvable sur cet appareil.')
+
+  accounts[accountIndex] = { ...accounts[accountIndex], profileName: normalizedProfileName }
+  saveAccounts(accounts)
+  const session = { ...currentSession, profileName: normalizedProfileName }
+  saveSession(session)
+  return session
+}
+
 export function signOutLocalAccount() {
   storage()?.removeItem(LOCAL_SESSION_KEY)
 }

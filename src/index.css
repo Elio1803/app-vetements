@@ -2455,6 +2455,12 @@ select {
 .account-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px; margin: 14px 0 22px; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--line); }
 .account-stats span { display: flex; min-height: 70px; align-items: center; justify-content: center; flex-direction: column; background: #faf7f2; color: var(--muted); font-size: .54rem; }
 .account-stats strong { color: var(--ink); font-family: var(--serif); font-size: 1.15rem; font-weight: 550; }
+.profile-editor-card { margin: 0 0 14px; padding: 15px; border: 1px solid var(--line); border-radius: 11px; background: var(--paper-deep); }
+.profile-editor-card .field-label { margin-bottom: 4px; font-family: var(--serif); font-size: .88rem; }
+.profile-editor-card > div:first-child > p { margin: 0 0 12px; color: var(--muted-dark); font-size: .61rem; line-height: 1.45; }
+.profile-editor-actions { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; }
+.profile-editor-actions .primary-button { min-height: 47px; padding-inline: 13px; font-size: .66rem; }
+.profile-editor-card > .form-error { margin-top: 10px; }
 .history-open-card {
   display: grid;
   width: 100%;
@@ -2940,6 +2946,8 @@ select {
   .history-page .history-outfit { grid-template-columns: 102px 1fr; padding: 10px; }
   .history-page .history-outfit-photos { height: 82px; }
   .history-page .history-empty { min-height: 360px; }
+  .profile-editor-actions { grid-template-columns: 1fr; }
+  .profile-editor-actions .primary-button { width: 100%; }
   .outfit-history { grid-template-columns: 1fr; gap: 21px; }
   .history-calendar { padding: 14px; }
   .history-day { font-size: .68rem; }

@@ -57,13 +57,19 @@ import { SkeletonCard } from './components/SkeletonCard'
 import { cardVariants, gridVariants, screenVariants, toastVariants, TRANSITIONS } from './lib/animations'
 import { daysSince, formatLastWorn } from './lib/dates'
 import { wardrobeSeasonForDate, wardrobeSeasonLabel } from './lib/outfit-engine'
-import { normalizeProfileName, profileNameFromEmail, profileNameFromMetadata } from './lib/profile'
+import {
+  normalizeProfileName,
+  PROFILE_NAME_MAX_LENGTH,
+  profileNameFromEmail,
+  profileNameFromMetadata,
+} from './lib/profile'
 import {
   createLocalAccount,
   getLocalSession,
   LocalAuthError,
   signInLocalAccount,
   signOutLocalAccount,
+  updateLocalProfileName,
 } from './lib/local-auth'
 import {
   CATEGORY_LABELS,
@@ -438,6 +444,9 @@ function App() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => initialLocalSession?.userId ?? null)
   const [currentEmail, setCurrentEmail] = useState<string | null>(() => initialLocalSession?.email ?? null)
   const [currentProfileName, setCurrentProfileName] = useState<string>(() => initialLocalSession?.profileName ?? '')
+  const [profileNameDraft, setProfileNameDraft] = useState<string>(() => initialLocalSession?.profileName ?? '')
+  const [profileNameSaving, setProfileNameSaving] = useState(false)
+  const [profileNameError, setProfileNameError] = useState('')
   const [view, setView] = useState<AppView>('wardrobe')
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [sortMode, setSortMode] = useState<SortMode>('rotation')
@@ -558,6 +567,12 @@ function App() {
     const timer = window.setTimeout(() => setAppEntering(false), 1200)
     return () => window.clearTimeout(timer)
   }, [appEntering])
+
+  useEffect(() => {
+    if (!accountOpen) return
+    setProfileNameDraft(currentProfileName || profileNameFromEmail(currentEmail))
+    setProfileNameError('')
+  }, [accountOpen, currentEmail, currentProfileName])
 
   const syncLocalItemsNow = async (manual = false) => {
     if (syncLocalItemsRunning.current) return
@@ -1045,6 +1060,34 @@ function App() {
     setAccountOpen(false)
     setAppEntering(false)
     setAuthenticated(false)
+  }
+
+  const saveProfileName = async () => {
+    const nextName = normalizeProfileName(profileNameDraft)
+    if (!nextName) {
+      setProfileNameError('Choisissez un nom pour votre dressing.')
+      return
+    }
+    setProfileNameSaving(true)
+    setProfileNameError('')
+    try {
+      if (supabase) {
+        const { data, error } = await supabase.auth.updateUser({ data: { display_name: nextName } })
+        if (error) throw error
+        const savedName = profileNameFromMetadata(data.user.user_metadata, data.user.email)
+        setCurrentProfileName(savedName)
+        setProfileNameDraft(savedName)
+      } else {
+        const session = updateLocalProfileName(nextName)
+        setCurrentProfileName(session.profileName)
+        setProfileNameDraft(session.profileName)
+      }
+      showToast(`Votre dressing s’appelle maintenant « ${nextName} ».`)
+    } catch {
+      setProfileNameError('Impossible d’enregistrer ce nom pour le moment. Réessayez.')
+    } finally {
+      setProfileNameSaving(false)
+    }
   }
 
   const signIn = async (email: string, password: string, createAccount: boolean, profileName: string) => {
@@ -1849,6 +1892,29 @@ function App() {
           <span><strong><AnimatedCounter value={state.outfits.length} /></strong> tenues portées</span>
           <span><strong><AnimatedCounter value={stats.rotationScore} suffix="%" /></strong> en rotation</span>
         </div>
+        <form className="profile-editor-card" onSubmit={(event) => { event.preventDefault(); void saveProfileName() }}>
+          <div>
+            <label className="field-label" htmlFor="dressing-profile-name">Nom de mon dressing</label>
+            <p>Personnalisez ce nom à tout moment. Il vous suivra sur tous vos appareils.</p>
+          </div>
+          <div className="profile-editor-actions">
+            <input
+              className="text-field"
+              id="dressing-profile-name"
+              type="text"
+              value={profileNameDraft}
+              onChange={(event) => setProfileNameDraft(event.target.value)}
+              maxLength={PROFILE_NAME_MAX_LENGTH}
+              placeholder="Ex. Mon dressing capsule"
+              autoComplete="name"
+              required
+            />
+            <button className="primary-button" type="submit" disabled={profileNameSaving || normalizeProfileName(profileNameDraft) === displayName}>
+              <Check size={17} /> {profileNameSaving ? 'Enregistrement…' : 'Enregistrer'}
+            </button>
+          </div>
+          {profileNameError && <p className="form-error" role="alert">{profileNameError}</p>}
+        </form>
         <button
           className="history-open-card"
           type="button"

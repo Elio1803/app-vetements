@@ -5,6 +5,7 @@ import {
   getLocalSession,
   signInLocalAccount,
   signOutLocalAccount,
+  updateLocalProfileName,
 } from './local-auth'
 
 describe('local account authentication', () => {
@@ -27,5 +28,11 @@ describe('local account authentication', () => {
     await expect(signInLocalAccount('moi@exemple.fr', 'mauvais-mot-de-passe')).rejects.toThrow(
       'Adresse e-mail ou mot de passe incorrect.',
     )
+  })
+
+  it('lets an existing account rename its dressing', async () => {
+    await createLocalAccount('moi@exemple.fr', 'motdepasse-solide', 'Premier nom')
+    expect(updateLocalProfileName('  Dressing capsule  ').profileName).toBe('Dressing capsule')
+    expect(getLocalSession()?.profileName).toBe('Dressing capsule')
   })
 })
