@@ -37,6 +37,7 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
   const [thinking, setThinking] = useState(false)
   const messagesContainer = useRef<HTMLDivElement>(null)
   const responseTimer = useRef<number | null>(null)
+  const lastTouchY = useRef<number | null>(null)
 
   useEffect(() => {
     if (!open) return
@@ -54,18 +55,40 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
   useEffect(() => {
     if (!open) return
 
+    const rememberTouchPosition = (event: TouchEvent) => {
+      const target = event.target
+      lastTouchY.current = target instanceof Element && target.closest('.help-chat-messages')
+        ? event.touches[0]?.clientY ?? null
+        : null
+    }
     const preventBackgroundScroll = (event: TouchEvent | WheelEvent) => {
       const target = event.target
-      if (target instanceof Element && target.closest('.help-chat-messages')) return
+      const messages = target instanceof Element
+        ? target.closest<HTMLElement>('.help-chat-messages')
+        : null
+
+      if (messages) {
+        const atTop = messages.scrollTop <= 0
+        const atBottom = messages.scrollTop + messages.clientHeight >= messages.scrollHeight - 1
+        const movement = event instanceof TouchEvent
+          ? (lastTouchY.current ?? event.touches[0]?.clientY ?? 0) - (event.touches[0]?.clientY ?? 0)
+          : event.deltaY
+
+        if (event instanceof TouchEvent) lastTouchY.current = event.touches[0]?.clientY ?? null
+        if ((movement < 0 && !atTop) || (movement > 0 && !atBottom)) return
+      }
       event.preventDefault()
     }
 
+    document.addEventListener('touchstart', rememberTouchPosition, { passive: true })
     document.addEventListener('touchmove', preventBackgroundScroll, { passive: false })
     document.addEventListener('wheel', preventBackgroundScroll, { passive: false })
 
     return () => {
+      document.removeEventListener('touchstart', rememberTouchPosition)
       document.removeEventListener('touchmove', preventBackgroundScroll)
       document.removeEventListener('wheel', preventBackgroundScroll)
+      lastTouchY.current = null
     }
   }, [open])
 
@@ -114,6 +137,20 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
 
   return (
     <div className="help-chat">
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            className="help-chat-backdrop"
+            aria-hidden="true"
+            onClick={() => setOpen(false)}
+            onTouchMove={(event) => event.preventDefault()}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: shouldReduceMotion ? 0 : .18 }}
+          />
+        )}
+      </AnimatePresence>
       <AnimatePresence>
         {open && (
           <motion.section

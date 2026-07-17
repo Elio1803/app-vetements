@@ -2503,6 +2503,14 @@ select {
 
 /* Assistant d'aide */
 .help-chat { position: relative; z-index: 75; }
+.help-chat-backdrop {
+  position: fixed;
+  z-index: 74;
+  inset: 0;
+  background: color-mix(in srgb, var(--ink) 5%, transparent);
+  overscroll-behavior: none;
+  touch-action: none;
+}
 .help-chat-launcher {
   position: fixed;
   z-index: 76;
