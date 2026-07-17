@@ -1065,7 +1065,7 @@ function App() {
   const saveProfileName = async () => {
     const nextName = normalizeProfileName(profileNameDraft)
     if (!nextName) {
-      setProfileNameError('Choisissez un nom pour votre dressing.')
+      setProfileNameError('Indiquez votre prénom ou votre nom.')
       return
     }
     setProfileNameSaving(true)
@@ -1082,7 +1082,7 @@ function App() {
         setCurrentProfileName(session.profileName)
         setProfileNameDraft(session.profileName)
       }
-      showToast(`Votre dressing s’appelle maintenant « ${nextName} ».`)
+      showToast(`Le dressing de ${nextName} est enregistré.`)
     } catch {
       setProfileNameError('Impossible d’enregistrer ce nom pour le moment. Réessayez.')
     } finally {
@@ -1092,7 +1092,7 @@ function App() {
 
   const signIn = async (email: string, password: string, createAccount: boolean, profileName: string) => {
     const chosenProfileName = normalizeProfileName(profileName)
-    if (createAccount && !chosenProfileName) return 'Choisissez un nom de profil.'
+    if (createAccount && !chosenProfileName) return 'Indiquez votre prénom ou votre nom.'
     if (!supabase) {
       try {
         const session = createAccount
@@ -1894,8 +1894,8 @@ function App() {
         </div>
         <form className="profile-editor-card" onSubmit={(event) => { event.preventDefault(); void saveProfileName() }}>
           <div>
-            <label className="field-label" htmlFor="dressing-profile-name">Nom de mon dressing</label>
-            <p>Personnalisez ce nom à tout moment. Il vous suivra sur tous vos appareils.</p>
+            <label className="field-label" htmlFor="dressing-profile-name">Le dressing de qui&nbsp;?</label>
+            <p>Indiquez votre prénom ou votre nom. Il vous suivra sur tous vos appareils.</p>
           </div>
           <div className="profile-editor-actions">
             <input
@@ -1905,7 +1905,7 @@ function App() {
               value={profileNameDraft}
               onChange={(event) => setProfileNameDraft(event.target.value)}
               maxLength={PROFILE_NAME_MAX_LENGTH}
-              placeholder="Ex. Mon dressing capsule"
+              placeholder="Ex. Élise"
               autoComplete="name"
               required
             />

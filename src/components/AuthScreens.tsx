@@ -70,7 +70,7 @@ export function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenP
           <form onSubmit={submit}>
             {createAccount && (
               <div className="profile-name-field">
-                <label className="field-label" htmlFor="profile-name">Nom de profil</label>
+                <label className="field-label" htmlFor="profile-name">Le dressing de qui&nbsp;?</label>
                 <input
                   className="text-field"
                   id="profile-name"
@@ -82,7 +82,7 @@ export function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenP
                   autoComplete="name"
                   required
                 />
-                <small>Ce nom personnalisera votre expérience dans Le Dressing.</small>
+                <small>Indiquez votre prénom ou votre nom pour personnaliser toute l’expérience.</small>
               </div>
             )}
             <label className="field-label" htmlFor="email">Adresse e-mail</label>

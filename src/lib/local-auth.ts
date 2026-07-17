@@ -131,7 +131,7 @@ export async function createLocalAccount(email: string, password: string, profil
   }
   const normalizedProfileName = normalizeProfileName(profileName)
   if (!normalizedProfileName) {
-    throw new LocalAuthError('Choisissez un nom de profil.')
+    throw new LocalAuthError('Indiquez votre prénom ou votre nom.')
   }
 
   const accounts = loadAccounts()
@@ -175,7 +175,7 @@ export async function signInLocalAccount(email: string, password: string) {
 
 export function updateLocalProfileName(profileName: string): LocalAccountSession {
   const normalizedProfileName = normalizeProfileName(profileName)
-  if (!normalizedProfileName) throw new LocalAuthError('Choisissez un nom pour votre dressing.')
+  if (!normalizedProfileName) throw new LocalAuthError('Indiquez votre prénom ou votre nom.')
 
   const currentSession = getLocalSession()
   if (!currentSession) throw new LocalAuthError('Votre session a expiré. Reconnectez-vous.')
