@@ -3036,6 +3036,31 @@ select {
     color: #101114;
   }
 
+  .generate-button,
+  .generate-button:hover:not(:disabled) {
+    border: 2px solid #81786e;
+    background: #ffffff;
+    color: #101114;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, .24);
+  }
+
+  .generate-button > span:first-child {
+    background: #17181d;
+    color: #ffffff;
+  }
+
+  .generate-button strong {
+    color: #101114;
+    font-size: 1.05rem;
+    font-weight: 650;
+  }
+
+  .generate-button small {
+    color: #4f4942;
+    font-size: 0.64rem;
+    font-weight: 600;
+  }
+
   .secondary-button:hover,
   .share-button:hover {
     background: #24262c;
