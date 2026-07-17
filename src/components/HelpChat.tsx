@@ -2,7 +2,13 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Bot, MessageCircleQuestion, Send, Sparkles, Trash2, X } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { TRANSITIONS } from '../lib/animations'
-import { answerHelpQuestion, type HelpAction } from '../lib/help-assistant'
+import {
+  answerHelpQuestion,
+  getHelpContextLabel,
+  getHelpSuggestions,
+  type HelpAction,
+  type HelpContext,
+} from '../lib/help-assistant'
 
 interface ChatMessage {
   id: string
@@ -13,6 +19,7 @@ interface ChatMessage {
 }
 
 interface HelpChatProps {
+  currentView: HelpContext
   onAction: (action: HelpAction) => void
 }
 
@@ -22,14 +29,7 @@ const START_MESSAGE: ChatMessage = {
   text: 'Bonjour ! Je suis l’assistant du Dressing. Comment puis-je vous aider à utiliser l’application ?',
 }
 
-const SUGGESTIONS = [
-  'Ajouter un vêtement',
-  'Générer une tenue',
-  'Synchroniser mon Mac',
-  'Utiliser l’historique',
-]
-
-export function HelpChat({ onAction }: HelpChatProps) {
+export function HelpChat({ currentView, onAction }: HelpChatProps) {
   const shouldReduceMotion = useReducedMotion()
   const [open, setOpen] = useState(false)
   const [question, setQuestion] = useState('')
@@ -58,7 +58,7 @@ export function HelpChat({ onAction }: HelpChatProps) {
     setQuestion('')
     setThinking(true)
     responseTimer.current = window.setTimeout(() => {
-      const reply = answerHelpQuestion(cleanQuestion)
+      const reply = answerHelpQuestion(cleanQuestion, currentView)
       setMessages((current) => [...current, {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -103,7 +103,7 @@ export function HelpChat({ onAction }: HelpChatProps) {
               <span><Bot size={21} /></span>
               <div>
                 <strong id="help-chat-title">Assistant Le Dressing</strong>
-                <small><i /> Aide instantanée</small>
+                <small><i /> Aide · {getHelpContextLabel(currentView)}</small>
               </div>
               <button type="button" onClick={clearConversation} aria-label="Effacer la conversation"><Trash2 size={17} /></button>
               <button type="button" onClick={() => setOpen(false)} aria-label="Fermer l’aide"><X size={19} /></button>
@@ -127,7 +127,7 @@ export function HelpChat({ onAction }: HelpChatProps) {
 
             {messages.length === 1 && (
               <div className="help-suggestions" aria-label="Questions suggérées">
-                {SUGGESTIONS.map((suggestion) => (
+                {getHelpSuggestions(currentView).map((suggestion) => (
                   <button type="button" onClick={() => ask(suggestion)} key={suggestion}>{suggestion}</button>
                 ))}
               </div>

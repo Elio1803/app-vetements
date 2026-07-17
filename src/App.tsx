@@ -1793,6 +1793,7 @@ function App() {
       </nav>
 
       <HelpChat
+        currentView={view}
         onAction={(action) => {
           if (action === 'add-item') {
             setAddOpen(true)
