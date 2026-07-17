@@ -7,6 +7,9 @@ begin;
 
 drop index if exists public.users_email_lower_unique;
 
+create schema if not exists private;
+revoke all on schema private from public;
+
 create table if not exists private.api_rate_limit_events (
   id bigint generated always as identity primary key,
   user_id uuid not null references auth.users (id) on delete cascade,
@@ -25,6 +28,8 @@ create table if not exists private.api_rate_limit_events (
     )
   )
 );
+
+alter table private.api_rate_limit_events enable row level security;
 
 revoke all on table private.api_rate_limit_events
   from public, anon, authenticated;
