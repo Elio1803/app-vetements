@@ -52,6 +52,7 @@ import { ClothingPhoto } from './components/ClothingPhoto'
 import { LoadingScreen } from './components/LoadingScreen'
 import { OutfitBoard } from './components/OutfitBoard'
 import { OutfitHistory } from './components/OutfitHistory'
+import { HelpChat } from './components/HelpChat'
 import { Sheet } from './components/Sheet'
 import { SkeletonCard } from './components/SkeletonCard'
 import { cardVariants, gridVariants, screenVariants, toastVariants, TRANSITIONS } from './lib/animations'
@@ -1790,6 +1791,18 @@ function App() {
           <CircleUserRound size={20} /><span>Profil</span>
         </button>
       </nav>
+
+      <HelpChat
+        onAction={(action) => {
+          if (action === 'add-item') {
+            setAddOpen(true)
+          } else if (action === 'profile') {
+            openProfile()
+          } else {
+            setView(action)
+          }
+        }}
+      />
 
       <Sheet
         open={addOpen}
