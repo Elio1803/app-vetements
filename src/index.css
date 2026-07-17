@@ -2473,6 +2473,31 @@ select {
 .history-open-card strong { font-family: var(--serif); font-size: .88rem; font-weight: 600; }
 .history-open-card p { margin: 4px 0 0; color: var(--muted-dark); font-size: .61rem; line-height: 1.45; }
 
+.history-page { max-width: 1320px; }
+.history-heading { align-items: center; }
+.history-heading .page-subtitle { max-width: 610px; }
+.history-heading-stat {
+  display: flex;
+  min-width: 190px;
+  align-items: center;
+  gap: 13px;
+  padding: 13px 16px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: var(--paper-deep);
+}
+.history-heading-stat > span { display: grid; width: 43px; height: 43px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--ink); color: var(--paper); }
+.history-heading-stat > div { display: flex; flex-direction: column; }
+.history-heading-stat strong { font-family: var(--serif); font-size: 1.25rem; font-weight: 600; line-height: 1; }
+.history-heading-stat small { margin-top: 4px; color: var(--muted); font-size: .57rem; }
+.history-page .outfit-history { grid-template-columns: minmax(430px, .9fr) minmax(430px, 1.1fr); gap: 28px; }
+.history-page .history-calendar { padding: 22px; box-shadow: 0 16px 38px rgba(32, 29, 25, .05); }
+.history-page .history-day { min-height: 47px; aspect-ratio: auto; }
+.history-page .history-list { min-width: 0; padding: 4px 0; }
+.history-page .history-outfit { grid-template-columns: 138px 1fr; padding: 12px; }
+.history-page .history-outfit-photos { height: 98px; }
+.history-page .history-empty { min-height: 420px; display: grid; place-content: center; border: 1px dashed var(--line-dark); border-radius: 18px; background: var(--paper-deep); }
+
 .outfit-history { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); align-items: start; gap: 18px; }
 .history-calendar { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper-deep); }
 .history-calendar > header { display: grid; grid-template-columns: 38px 1fr 38px; align-items: center; margin-bottom: 15px; }
@@ -2770,6 +2795,7 @@ select {
 
 @media (max-width: 1120px) {
   .page-content { padding-left: 34px; padding-right: 34px; }
+  .history-page .outfit-history { grid-template-columns: 1fr; }
   .rotation-panel { grid-template-columns: 1fr 390px; }
   .clothing-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .generator-layout { grid-template-columns: 1fr; }
@@ -2902,6 +2928,16 @@ select {
   .sheet-header { padding: 17px 18px 15px; }
   .sheet-header h2 { max-width: 270px; font-size: 1.43rem; }
   .sheet-body { padding: 18px 18px 27px; }
+  .history-heading { gap: 14px; }
+  .history-heading-stat { min-width: 0; padding: 10px 12px; }
+  .history-heading-stat > span { width: 39px; height: 39px; }
+  .history-heading-stat small { font-size: .52rem; }
+  .history-page .outfit-history { grid-template-columns: 1fr; gap: 21px; }
+  .history-page .history-calendar { padding: 14px; }
+  .history-page .history-day { min-height: 40px; }
+  .history-page .history-outfit { grid-template-columns: 102px 1fr; padding: 10px; }
+  .history-page .history-outfit-photos { height: 82px; }
+  .history-page .history-empty { min-height: 360px; }
   .outfit-history { grid-template-columns: 1fr; gap: 21px; }
   .history-calendar { padding: 14px; }
   .history-day { font-size: .68rem; }

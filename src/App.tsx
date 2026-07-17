@@ -101,7 +101,7 @@ import {
   type WeatherContext,
 } from './types'
 
-type AppView = 'wardrobe' | 'generate'
+type AppView = 'wardrobe' | 'generate' | 'history'
 type SortMode = 'rotation' | 'recent' | 'worn'
 type CategoryFilter = ClothingCategory | 'all'
 
@@ -442,7 +442,6 @@ function App() {
   const [query, setQuery] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
-  const [historyOpen, setHistoryOpen] = useState(false)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [editItem, setEditItem] = useState(false)
   const [editName, setEditName] = useState('')
@@ -1152,15 +1151,12 @@ function App() {
             {view === 'generate' && <span className="nav-dot" />}
           </button>
           <button
-            className={historyOpen ? 'is-active' : ''}
-            onClick={() => {
-              setAccountOpen(false)
-              setHistoryOpen(true)
-            }}
+            className={view === 'history' ? 'is-active' : ''}
+            onClick={() => setView('history')}
           >
             <CalendarDays size={19} />
             Historique
-            {historyOpen && <span className="nav-dot" />}
+            {view === 'history' && <span className="nav-dot" />}
           </button>
         </nav>
         <button className="sidebar-add" onClick={() => setAddOpen(true)}>
@@ -1353,7 +1349,7 @@ function App() {
               )}
             </section>
           </motion.div>
-        ) : (
+        ) : view === 'generate' ? (
           <motion.div
             key="generate"
             className="page-content generate-page"
@@ -1584,6 +1580,29 @@ function App() {
               </section>
             </div>
           </motion.div>
+        ) : (
+          <motion.div
+            key="history"
+            className="page-content history-page"
+            variants={shouldReduceMotion ? undefined : screenVariants}
+            initial="initial"
+            animate="animate"
+            exit="exit"
+            transition={TRANSITIONS.screen}
+          >
+            <header className="page-heading history-heading">
+              <div>
+                <p className="eyebrow">Votre quotidien</p>
+                <h1>Historique</h1>
+                <p className="page-subtitle">Retrouvez vos tenues portées, jour après jour, et suivez la rotation de votre dressing.</p>
+              </div>
+              <div className="history-heading-stat" aria-label={`${state.outfits.length} tenues portées`}>
+                <span><CalendarDays size={21} /></span>
+                <div><strong><AnimatedCounter value={state.outfits.length} /></strong><small>tenues portées</small></div>
+              </div>
+            </header>
+            <OutfitHistory outfits={state.outfits} items={state.items} />
+          </motion.div>
         )}
         </AnimatePresence>
       </main>
@@ -1599,11 +1618,8 @@ function App() {
           <Plus size={24} />
         </button>
         <button
-          className={historyOpen ? 'is-active' : ''}
-          onClick={() => {
-            setAccountOpen(false)
-            setHistoryOpen(true)
-          }}
+          className={view === 'history' ? 'is-active' : ''}
+          onClick={() => setView('history')}
           aria-label="Ouvrir l’historique"
         >
           <CalendarDays size={20} /><span>Historique</span>
@@ -1824,7 +1840,7 @@ function App() {
           type="button"
           onClick={() => {
             setAccountOpen(false)
-            setHistoryOpen(true)
+            setView('history')
           }}
         >
           <span><CalendarDays size={23} /></span>
@@ -1871,16 +1887,6 @@ function App() {
           )}
         </div>
         <button className="danger-button full-button" onClick={signOut}><LogOut size={17} /> Se déconnecter</button>
-      </Sheet>
-
-      <Sheet
-        open={historyOpen}
-        onClose={() => setHistoryOpen(false)}
-        eyebrow="Votre calendrier"
-        title="Tenues portées"
-        wide
-      >
-        <OutfitHistory outfits={state.outfits} items={state.items} />
       </Sheet>
 
       <AnimatePresence>
