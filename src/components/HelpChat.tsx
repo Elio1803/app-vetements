@@ -1,6 +1,7 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Bot, MessageCircleQuestion, Send, Sparkles, Trash2, X } from 'lucide-react'
 import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { TRANSITIONS } from '../lib/animations'
 import {
   answerHelpQuestion,
@@ -35,6 +36,7 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([START_MESSAGE])
   const [thinking, setThinking] = useState(false)
+  const panel = useRef<HTMLElement>(null)
   const messagesContainer = useRef<HTMLDivElement>(null)
   const responseTimer = useRef<number | null>(null)
   const lastTouchY = useRef<number | null>(null)
@@ -93,6 +95,35 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
     }
   }, [open])
 
+  useEffect(() => {
+    if (!open) return
+
+    const pageScrollPosition = window.scrollY
+    const viewport = window.visualViewport
+    const fitVisibleViewport = () => {
+      const element = panel.current
+      if (!element) return
+      element.style.top = `${Math.round(viewport?.offsetTop ?? 0)}px`
+      element.style.left = `${Math.round(viewport?.offsetLeft ?? 0)}px`
+      element.style.width = `${Math.round(viewport?.width ?? window.innerWidth)}px`
+      element.style.height = `${Math.round(viewport?.height ?? window.innerHeight)}px`
+    }
+
+    fitVisibleViewport()
+    const frame = window.requestAnimationFrame(fitVisibleViewport)
+    viewport?.addEventListener('resize', fitVisibleViewport)
+    viewport?.addEventListener('scroll', fitVisibleViewport)
+    window.addEventListener('resize', fitVisibleViewport)
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      viewport?.removeEventListener('resize', fitVisibleViewport)
+      viewport?.removeEventListener('scroll', fitVisibleViewport)
+      window.removeEventListener('resize', fitVisibleViewport)
+      window.requestAnimationFrame(() => window.scrollTo({ top: pageScrollPosition, behavior: 'auto' }))
+    }
+  }, [open])
+
   useEffect(() => () => {
     if (responseTimer.current !== null) window.clearTimeout(responseTimer.current)
   }, [])
@@ -136,7 +167,7 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
     setMessages([START_MESSAGE])
   }
 
-  return (
+  return createPortal(
     <div className="help-chat">
       <AnimatePresence>
         {open && (
@@ -156,8 +187,9 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
         {open && (
           <motion.section
             className="help-chat-panel"
+            ref={panel}
             role="dialog"
-            aria-modal="false"
+            aria-modal="true"
             aria-labelledby="help-chat-title"
             initial={false}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -224,6 +256,7 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
         {open ? <X size={22} /> : <MessageCircleQuestion size={23} />}
         {!open && <span>Aide</span>}
       </motion.button>
-    </div>
+    </div>,
+    document.body,
   )
 }

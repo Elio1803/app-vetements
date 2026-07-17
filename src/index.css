@@ -2535,7 +2535,8 @@ select {
 .help-chat-panel {
   position: fixed;
   z-index: 75;
-  inset: 0;
+  top: 0;
+  left: 0;
   display: flex;
   width: 100vw;
   height: 100dvh;
@@ -2980,7 +2981,7 @@ select {
   }
   .help-chat-launcher { right: 15px; bottom: calc(84px + env(safe-area-inset-bottom)); height: 50px; min-width: 50px; padding: 0 14px; }
   .help-chat-launcher.is-open { width: 50px; min-width: 50px; }
-  .help-chat-panel { inset: 0; width: 100vw; height: 100dvh; }
+  .help-chat-panel { top: 0; left: 0; width: 100vw; height: 100dvh; }
   .mobile-nav > button:not(.mobile-add) { display: flex; min-height: 53px; align-items: center; justify-content: center; flex-direction: column; gap: 4px; border: 0; background: transparent; color: #898278; font-size: .58rem; font-weight: 600; }
   .mobile-nav > button.is-active { color: var(--ink); }
   .mobile-add { display: grid; width: 54px; height: 54px; margin: -25px auto 0; place-items: center; border: 5px solid var(--ivory); border-radius: 50%; background: var(--ink); color: white; box-shadow: 0 8px 20px rgba(26,24,21,.18); }
