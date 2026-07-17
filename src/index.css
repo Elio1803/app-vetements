@@ -2982,10 +2982,15 @@ select {
   .sheet-header { padding: 17px 18px 15px; }
   .sheet-header h2 { max-width: 270px; font-size: 1.43rem; }
   .sheet-body { padding: 18px 18px 27px; }
-  .history-heading { gap: 14px; }
-  .history-heading-stat { min-width: 0; padding: 10px 12px; }
-  .history-heading-stat > span { width: 39px; height: 39px; }
-  .history-heading-stat small { font-size: .52rem; }
+  .history-heading { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: 10px; row-gap: 0; }
+  .history-heading > div:first-child { display: contents; }
+  .history-heading .eyebrow { grid-column: 1; grid-row: 1; margin: 0; }
+  .history-heading h1 { grid-column: 1 / -1; grid-row: 2; margin-top: 14px; }
+  .history-heading .page-subtitle { grid-column: 1 / -1; grid-row: 3; margin-top: 12px; }
+  .history-heading-stat { min-width: 0; max-width: 124px; grid-column: 2; grid-row: 1; justify-self: end; gap: 8px; padding: 8px 10px; }
+  .history-heading-stat > span { width: 35px; height: 35px; }
+  .history-heading-stat strong { font-size: 1.05rem; }
+  .history-heading-stat small { margin-top: 2px; font-size: .5rem; white-space: nowrap; }
   .history-page .outfit-history { grid-template-columns: 1fr; gap: 21px; }
   .history-page .history-calendar { padding: 14px; }
   .history-page .history-day { min-height: 40px; }

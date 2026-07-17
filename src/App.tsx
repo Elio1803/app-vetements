@@ -1650,9 +1650,12 @@ function App() {
                 <h1>Historique</h1>
                 <p className="page-subtitle">Retrouvez vos tenues portées, jour après jour, et suivez la rotation de votre dressing.</p>
               </div>
-              <div className="history-heading-stat" aria-label={`${state.outfits.length} tenues portées`}>
+              <div className="history-heading-stat" aria-label={`${state.outfits.length} ${state.outfits.length > 1 ? 'tenues portées' : 'tenue portée'}`}>
                 <span><CalendarDays size={21} /></span>
-                <div><strong><AnimatedCounter value={state.outfits.length} /></strong><small>tenues portées</small></div>
+                <div>
+                  <strong><AnimatedCounter value={state.outfits.length} /></strong>
+                  <small>{state.outfits.length > 1 ? 'tenues portées' : 'tenue portée'}</small>
+                </div>
               </div>
             </header>
             <OutfitHistory outfits={state.outfits} items={state.items} />
