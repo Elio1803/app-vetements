@@ -2951,6 +2951,28 @@ select {
     border-color: var(--line);
   }
 
+  .occasion-grid label:not(.is-active) {
+    border-color: #c9c1b5;
+    background: #f4efe7;
+    color: #302e2a;
+  }
+
+  .occasion-grid label:not(.is-active) .occasion-icon {
+    background: #24262c;
+    color: #eee8df;
+  }
+
+  .note-field {
+    border-color: #c9c1b5;
+    background: #f4efe7;
+    color: #201f1b;
+  }
+
+  .note-field::placeholder {
+    color: #676159;
+    opacity: 1;
+  }
+
   .sheet-backdrop {
     background: rgba(0, 0, 0, .62);
   }
