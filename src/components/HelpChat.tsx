@@ -159,9 +159,9 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
             role="dialog"
             aria-modal="false"
             aria-labelledby="help-chat-title"
-            initial={shouldReduceMotion ? false : { opacity: 0, y: 18, scale: .97 }}
+            initial={false}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 12, scale: .98 }}
+            exit={shouldReduceMotion ? { opacity: 1 } : { opacity: 0 }}
             transition={TRANSITIONS.hero}
           >
             <header className="help-chat-header">
