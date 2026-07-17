@@ -35,34 +35,37 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
   const [question, setQuestion] = useState('')
   const [messages, setMessages] = useState<ChatMessage[]>([START_MESSAGE])
   const [thinking, setThinking] = useState(false)
-  const messagesEnd = useRef<HTMLDivElement>(null)
+  const messagesContainer = useRef<HTMLDivElement>(null)
   const responseTimer = useRef<number | null>(null)
 
   useEffect(() => {
-    messagesEnd.current?.scrollIntoView({ behavior: shouldReduceMotion ? 'auto' : 'smooth' })
+    if (!open) return
+    const frame = window.requestAnimationFrame(() => {
+      const container = messagesContainer.current
+      if (!container) return
+      container.scrollTo({
+        top: container.scrollHeight,
+        behavior: shouldReduceMotion ? 'auto' : 'smooth',
+      })
+    })
+    return () => window.cancelAnimationFrame(frame)
   }, [messages, open, shouldReduceMotion, thinking])
 
   useEffect(() => {
     if (!open) return
 
-    const previousBodyOverflow = document.body.style.overflow
-    const previousRootOverflow = document.documentElement.style.overflow
     const preventBackgroundScroll = (event: TouchEvent | WheelEvent) => {
       const target = event.target
       if (target instanceof Element && target.closest('.help-chat-messages')) return
       event.preventDefault()
     }
 
-    document.documentElement.style.overflow = 'hidden'
-    document.body.style.overflow = 'hidden'
     document.addEventListener('touchmove', preventBackgroundScroll, { passive: false })
     document.addEventListener('wheel', preventBackgroundScroll, { passive: false })
 
     return () => {
       document.removeEventListener('touchmove', preventBackgroundScroll)
       document.removeEventListener('wheel', preventBackgroundScroll)
-      document.documentElement.style.overflow = previousRootOverflow
-      document.body.style.overflow = previousBodyOverflow
     }
   }, [open])
 
@@ -133,7 +136,7 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
               <button type="button" onClick={() => setOpen(false)} aria-label="Fermer l’aide"><X size={19} /></button>
             </header>
 
-            <div className="help-chat-messages" aria-live="polite">
+            <div className="help-chat-messages" aria-live="polite" ref={messagesContainer}>
               {messages.map((message) => (
                 <div className={`help-message help-message--${message.role}`} key={message.id}>
                   {message.role === 'assistant' && <span className="help-message-icon"><Sparkles size={13} /></span>}
@@ -146,7 +149,6 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
                 </div>
               ))}
               {thinking && <div className="help-typing" aria-label="L’assistant écrit"><i /><i /><i /></div>}
-              <div ref={messagesEnd} />
             </div>
 
             {messages.length === 1 && (
