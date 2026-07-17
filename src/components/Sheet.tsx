@@ -10,9 +10,10 @@ interface SheetProps extends PropsWithChildren {
   onClose: () => void
   footer?: ReactNode
   wide?: boolean
+  entrance?: 'default' | 'profile'
 }
 
-export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, children }: SheetProps) {
+export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, entrance = 'default', children }: SheetProps) {
   const shouldReduceMotion = useReducedMotion()
   const [mobile, setMobile] = useState(() => (
     typeof window !== 'undefined' && window.matchMedia('(max-width: 680px)').matches
@@ -44,7 +45,7 @@ export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, chi
             transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.2, ease: 'easeOut' }}
           />
           <motion.section
-            className={`sheet-panel ${wide ? 'sheet-panel--wide' : ''}`}
+            className={`sheet-panel ${wide ? 'sheet-panel--wide' : ''} ${entrance === 'profile' ? 'sheet-panel--profile' : ''}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="sheet-title"

@@ -1874,7 +1874,7 @@ function App() {
         )}
       </Sheet>
 
-      <Sheet open={accountOpen} onClose={() => setAccountOpen(false)} eyebrow="Votre compte" title={`Bonjour ${displayName}`}>
+      <Sheet open={accountOpen} onClose={() => setAccountOpen(false)} eyebrow="Votre compte" title={`Bonjour ${displayName}`} entrance="profile">
         <div className="account-card">
           <span className="account-avatar"><CircleUserRound size={29} /></span>
           <div>
