@@ -23,6 +23,8 @@ interface SupabaseClothingCreateRow {
   name: string | null;
 }
 
+const REQUEST_TIMEOUT_MS = 15_000;
+
 export interface WardrobeApiOptions {
   supabaseUrl?: string;
   anonKey?: string;
@@ -156,17 +158,34 @@ export class SupabaseWardrobeApi implements WardrobeApi {
 
   private async request(path: string, init: RequestInit = {}): Promise<unknown> {
     if (!this.supabaseUrl || !this.anonKey) throw new Error("Supabase n’est pas configuré.");
-    const response = await this.fetcher(`${this.supabaseUrl}${path}`, {
-      ...init,
-      headers: await this.headers(init.headers as Record<string, string> | undefined),
-    });
-    const body = await response.text();
-    if (!response.ok) {
-      // Do not surface database/provider details in the browser UI. Status is
-      // enough for diagnostics while the backend keeps the precise event log.
-      throw new Error(`La requête sécurisée a échoué (${response.status}).`);
+    const controller = new AbortController();
+    const forwardAbort = () => controller.abort();
+    if (init.signal?.aborted) controller.abort();
+    else init.signal?.addEventListener("abort", forwardAbort, { once: true });
+    const timeout = globalThis.setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
+
+    try {
+      const response = await this.fetcher(`${this.supabaseUrl}${path}`, {
+        ...init,
+        signal: controller.signal,
+        headers: await this.headers(init.headers as Record<string, string> | undefined),
+      });
+      const body = await response.text();
+      if (!response.ok) {
+        // Do not surface database/provider details in the browser UI. Status is
+        // enough for diagnostics while the backend keeps the precise event log.
+        throw new Error(`La requête sécurisée a échoué (${response.status}).`);
+      }
+      return parseJsonText(body);
+    } catch (error) {
+      if (controller.signal.aborted && !init.signal?.aborted) {
+        throw new Error("La connexion au dressing a pris trop de temps. Réessayez dans un instant.");
+      }
+      throw error;
+    } finally {
+      globalThis.clearTimeout(timeout);
+      init.signal?.removeEventListener("abort", forwardAbort);
     }
-    return parseJsonText(body);
   }
 
   private recordFallback(error: unknown): void {

@@ -24,21 +24,39 @@ export function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenP
     event.preventDefault()
     setBusy(true)
     setAuthError('')
-    const error = await onLogin(email, password, createAccount, profileName)
-    if (error) setAuthError(error)
-    setBusy(false)
+    try {
+      const error = await onLogin(email, password, createAccount, profileName)
+      if (error) setAuthError(error)
+    } catch {
+      setAuthError('La connexion a rencontré un problème. Vérifiez votre réseau puis réessayez.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const continueWithGoogle = async () => {
     setBusy(true)
     setAuthError('')
-    const error = await onGoogle()
-    if (error) setAuthError(error)
-    setBusy(false)
+    try {
+      const error = await onGoogle()
+      if (error) setAuthError(error)
+    } catch {
+      setAuthError('La connexion Google est momentanément indisponible.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   const resetPassword = async () => {
-    setAuthError(await onResetPassword(email))
+    setBusy(true)
+    setAuthError('')
+    try {
+      setAuthError(await onResetPassword(email))
+    } catch {
+      setAuthError('L’envoi du lien a échoué. Vérifiez votre réseau puis réessayez.')
+    } finally {
+      setBusy(false)
+    }
   }
 
   return (
@@ -64,8 +82,8 @@ export function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenP
           <h2>{createAccount ? 'Créer votre dressing' : 'Entrez dans votre dressing'}</h2>
           <p className="auth-intro">{createAccount ? 'Quelques secondes suffisent pour commencer.' : 'Vos vêtements vous attendent.'}</p>
           <div className="auth-tabs" role="tablist" aria-label="Type de compte">
-            <button role="tab" aria-selected={!createAccount} className={!createAccount ? 'is-active' : ''} onClick={() => setCreateAccount(false)}>Se connecter</button>
-            <button role="tab" aria-selected={createAccount} className={createAccount ? 'is-active' : ''} onClick={() => setCreateAccount(true)}>Créer un compte</button>
+            <button type="button" role="tab" aria-selected={!createAccount} className={!createAccount ? 'is-active' : ''} onClick={() => { setCreateAccount(false); setAuthError('') }}>Se connecter</button>
+            <button type="button" role="tab" aria-selected={createAccount} className={createAccount ? 'is-active' : ''} onClick={() => { setCreateAccount(true); setAuthError('') }}>Créer un compte</button>
           </div>
           <form onSubmit={submit}>
             {createAccount && (
@@ -86,10 +104,22 @@ export function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenP
               </div>
             )}
             <label className="field-label" htmlFor="email">Adresse e-mail</label>
-            <input className="text-field" id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="vous@exemple.fr" required />
+            <input
+              className="text-field"
+              id="email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              placeholder="vous@exemple.fr"
+              inputMode="email"
+              autoComplete="email"
+              autoCapitalize="none"
+              spellCheck={false}
+              required
+            />
             <div className="password-label-row">
               <label className="field-label" htmlFor="password">Mot de passe</label>
-              {!createAccount && <button type="button" className="text-link" onClick={resetPassword}>Mot de passe oublié ?</button>}
+              {!createAccount && <button type="button" className="text-link" onClick={resetPassword} disabled={busy}>Mot de passe oublié ?</button>}
             </div>
             <input className="text-field" id="password" type="password" value={password} onChange={(event) => setPassword(event.target.value)} placeholder={createAccount ? '10 caractères minimum' : 'Votre mot de passe'} minLength={createAccount ? 10 : 1} maxLength={128} autoComplete={createAccount ? 'new-password' : 'current-password'} required />
             <button className="primary-button auth-submit" type="submit" disabled={busy} aria-busy={busy}>

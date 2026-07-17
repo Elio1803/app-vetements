@@ -35,6 +35,62 @@ export function wardrobeSeasonForDate(date: Date): WardrobeSeason {
   return "hiver";
 }
 
+export function generationReadinessFor(
+  items: readonly ClothingItem[],
+  occasion: Occasion,
+  now: Date,
+  weather?: WeatherContext | null,
+) {
+  const hasDress = items.some((item) => item.category === "robe");
+  const hasSeparates = items.some((item) => item.category === "haut") &&
+    items.some((item) => item.category === "bas");
+  const hasShoes = items.some((item) => item.category === "chaussures");
+  const hasWarmLayer = items.some((item) => item.category === "veste_manteau");
+  const season = wardrobeSeasonForDate(now);
+  const readableSeason = wardrobeSeasonLabel(season);
+  const formalOccasion = FORMAL_OCCASIONS.includes(occasion);
+  const coldSeason = COLD_SEASONS.includes(season);
+  const needsOuterLayer = weather
+    ? weather.apparentTemperatureC <= 14 || isWetWeather(weather)
+    : coldSeason;
+
+  if (!hasDress && !hasSeparates) {
+    return {
+      canGenerate: false,
+      message: "Ajoutez au moins un haut et un bas, ou une robe, pour générer une tenue complète.",
+      season,
+    };
+  }
+
+  if (formalOccasion && !hasShoes) {
+    return {
+      canGenerate: false,
+      message: "Pour une occasion habillée, ajoutez au moins une paire de chaussures afin de proposer une tenue complète.",
+      season,
+    };
+  }
+
+  if (needsOuterLayer && occasion !== "sport" && !hasWarmLayer) {
+    return {
+      canGenerate: false,
+      message: weather
+        ? `Avec ${Math.round(weather.apparentTemperatureC)} °C ressentis${isWetWeather(weather) ? " et des précipitations" : ""}, ajoutez une veste ou un manteau pour une tenue adaptée.`
+        : `En ${readableSeason}, ajoutez une veste ou un manteau pour générer une tenue vraiment adaptée à la saison.`,
+      season,
+    };
+  }
+
+  return {
+    canGenerate: true,
+    message: weather
+      ? `Météo réelle intégrée : ${Math.round(weather.apparentTemperatureC)} °C ressentis, ${weatherConditionLabel(weather.condition)}.`
+      : coldSeason
+        ? `Suggestions adaptées à l’${readableSeason} : les couches chaudes seront privilégiées.`
+        : `Suggestions adaptées à la saison ${readableSeason}.`,
+    season,
+  };
+}
+
 function itemSeasonScore(
   item: ClothingItem,
   season: WardrobeSeason,

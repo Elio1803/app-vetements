@@ -34,12 +34,15 @@ import {
   Trash2,
   Upload,
   WandSparkles,
+  WifiOff,
   Zap,
   type LucideIcon,
 } from 'lucide-react'
 import {
   type ChangeEvent,
   type DragEvent,
+  lazy,
+  Suspense,
   useEffect,
   useMemo,
   useRef,
@@ -50,14 +53,11 @@ import { AnimatedCounter } from './components/AnimatedCounter'
 import { LoginScreen, PasswordRecoveryScreen } from './components/AuthScreens'
 import { ClothingPhoto } from './components/ClothingPhoto'
 import { LoadingScreen } from './components/LoadingScreen'
-import { OutfitBoard } from './components/OutfitBoard'
-import { OutfitHistory } from './components/OutfitHistory'
-import { HelpChat } from './components/HelpChat'
 import { Sheet } from './components/Sheet'
 import { SkeletonCard } from './components/SkeletonCard'
 import { cardVariants, gridVariants, screenVariants, toastVariants, TRANSITIONS } from './lib/animations'
 import { daysSince, formatLastWorn } from './lib/dates'
-import { wardrobeSeasonForDate, wardrobeSeasonLabel } from './lib/outfit-engine'
+import { generationReadinessFor } from './lib/outfit-engine'
 import {
   normalizeProfileName,
   PROFILE_NAME_MAX_LENGTH,
@@ -89,7 +89,7 @@ import {
   wardrobeStorageKeyForAccount,
 } from './lib/storage'
 import { createProductPhoto, defaultFocusForCategory, focusPhotoOnCategory, type GarmentFocus } from './lib/product-photo'
-import { isWetWeather, weatherConditionLabel } from './lib/weather'
+import { weatherConditionLabel } from './lib/weather'
 import {
   createRemoveBgProductPhoto,
   isGoogleAuthEnabled,
@@ -106,12 +106,21 @@ import {
   type ClothingItem,
   type Occasion,
   type OutfitSuggestion,
-  type WeatherContext,
 } from './types'
 
 type AppView = 'wardrobe' | 'generate' | 'history' | 'profile'
 type SortMode = 'rotation' | 'recent' | 'worn'
 type CategoryFilter = ClothingCategory | 'all'
+
+const OutfitHistory = lazy(() => import('./components/OutfitHistory').then((module) => ({
+  default: module.OutfitHistory,
+})))
+const OutfitBoard = lazy(() => import('./components/OutfitBoard').then((module) => ({
+  default: module.OutfitBoard,
+})))
+const HelpChat = lazy(() => import('./components/HelpChat').then((module) => ({
+  default: module.HelpChat,
+})))
 
 const PASSWORD_RECOVERY_KEY = 'le-dressing:password-recovery'
 
@@ -342,61 +351,6 @@ function recoverLocalWardrobeItems(targetUserId: string): ClothingItem[] {
   return [...recovered.values()]
 }
 
-function generationReadinessFor(
-  items: readonly ClothingItem[],
-  occasion: Occasion,
-  now: Date,
-  weather?: WeatherContext | null,
-) {
-  const hasDress = items.some((item) => item.category === 'robe')
-  const hasSeparates = items.some((item) => item.category === 'haut') && items.some((item) => item.category === 'bas')
-  const hasShoes = items.some((item) => item.category === 'chaussures')
-  const hasWarmLayer = items.some((item) => item.category === 'veste_manteau')
-  const season = wardrobeSeasonForDate(now)
-  const readableSeason = wardrobeSeasonLabel(season)
-  const formalOccasion = occasion === 'travail' || occasion === 'soiree' || occasion === 'rendez_vous' || occasion === 'habille'
-  const coldSeason = season === 'automne' || season === 'hiver'
-  const needsOuterLayer = weather
-    ? weather.apparentTemperatureC <= 14 || isWetWeather(weather)
-    : coldSeason
-
-  if (!hasDress && !hasSeparates) {
-    return {
-      canGenerate: false,
-      message: 'Ajoutez au moins un haut et un bas, ou une robe, pour générer une tenue complète.',
-      season,
-    }
-  }
-
-  if (formalOccasion && !hasShoes) {
-    return {
-      canGenerate: false,
-      message: 'Pour une occasion habillée, ajoutez au moins une paire de chaussures afin de proposer une tenue complète.',
-      season,
-    }
-  }
-
-  if (needsOuterLayer && occasion !== 'sport' && !hasWarmLayer) {
-    return {
-      canGenerate: false,
-      message: weather
-        ? `Avec ${Math.round(weather.apparentTemperatureC)} °C ressentis${isWetWeather(weather) ? ' et des précipitations' : ''}, ajoutez une veste ou un manteau pour une tenue adaptée.`
-        : `En ${readableSeason}, ajoutez une veste ou un manteau pour générer une tenue vraiment adaptée à la saison.`,
-      season,
-    }
-  }
-
-  return {
-    canGenerate: true,
-    message: weather
-      ? `Météo réelle intégrée : ${Math.round(weather.apparentTemperatureC)} °C ressentis, ${weatherConditionLabel(weather.condition)}.`
-      : coldSeason
-        ? `Suggestions adaptées à l’${readableSeason} : les couches chaudes seront privilégiées.`
-        : `Suggestions adaptées à la saison ${readableSeason}.`,
-    season,
-  }
-}
-
 function ClothingCard({ item, onOpen }: { item: ClothingItem; onOpen: () => void }) {
   const status = itemStatus(item)
   const shouldReduceMotion = useReducedMotion()
@@ -474,6 +428,7 @@ function App() {
   const [generating, setGenerating] = useState(false)
   const [wearCandidate, setWearCandidate] = useState<OutfitSuggestion | null>(null)
   const [toast, setToast] = useState('')
+  const toastTimer = useRef<number | null>(null)
   const [appEntering, setAppEntering] = useState(false)
   const isOnline = useOnlineStatus()
   const [cloudRefreshing, setCloudRefreshing] = useState(false)
@@ -489,6 +444,10 @@ function App() {
   const initialEntryPlayed = useRef(false)
   const syncingLocalItems = useRef(new Set<string>())
   const syncLocalItemsRunning = useRef(false)
+
+  useEffect(() => () => {
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
+  }, [])
 
   useEffect(() => {
     if (!supabase) return
@@ -746,8 +705,12 @@ function App() {
   const localOnlyCount = state.items.filter((item) => isLocalPhotoUrl(item.photoUrl)).length
 
   const showToast = (message: string) => {
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
     setToast(message)
-    window.setTimeout(() => setToast(''), 3200)
+    toastTimer.current = window.setTimeout(() => {
+      setToast('')
+      toastTimer.current = null
+    }, 3200)
   }
 
   const startEmergencyLook = () => {
@@ -805,6 +768,10 @@ function App() {
 
   const preparePhotoFile = async (file: File) => {
     if (!file) return
+    if (file.size > 25 * 1024 * 1024) {
+      setAddError('Cette photo dépasse 25 Mo. Choisissez une image plus légère pour éviter de saturer le téléphone.')
+      return
+    }
     setPhotoBusy(true)
     setAddError('')
     try {
@@ -1198,12 +1165,12 @@ function App() {
       <aside className="desktop-sidebar">
         <BrandMark />
         <nav className="desktop-nav" aria-label="Navigation principale">
-          <button className={view === 'wardrobe' ? 'is-active' : ''} onClick={() => setView('wardrobe')}>
+          <button className={view === 'wardrobe' ? 'is-active' : ''} onClick={() => setView('wardrobe')} aria-current={view === 'wardrobe' ? 'page' : undefined}>
             <Grid2X2 size={19} />
             Mon dressing
             {view === 'wardrobe' && <span className="nav-dot" />}
           </button>
-          <button className={view === 'generate' ? 'is-active' : ''} onClick={() => setView('generate')}>
+          <button className={view === 'generate' ? 'is-active' : ''} onClick={() => setView('generate')} aria-current={view === 'generate' ? 'page' : undefined}>
             <WandSparkles size={19} />
             Créer une tenue
             {view === 'generate' && <span className="nav-dot" />}
@@ -1211,6 +1178,7 @@ function App() {
           <button
             className={view === 'history' ? 'is-active' : ''}
             onClick={() => setView('history')}
+            aria-current={view === 'history' ? 'page' : undefined}
           >
             <CalendarDays size={19} />
             Historique
@@ -1228,7 +1196,7 @@ function App() {
           <p>Laissez-les inspirer votre prochaine tenue.</p>
           <button onClick={() => setView('generate')}>Composer <ChevronRight size={15} /></button>
         </div>
-        <button className={view === 'profile' ? 'user-row is-active' : 'user-row'} onClick={openProfile}>
+        <button className={view === 'profile' ? 'user-row is-active' : 'user-row'} onClick={openProfile} aria-current={view === 'profile' ? 'page' : undefined}>
           <span className="user-avatar">{displayInitials}</span>
           <span><strong>{displayName}</strong><small>{supabase ? 'Compte synchronisé' : 'Compte local privé'}</small></span>
           <ChevronRight size={17} />
@@ -1239,6 +1207,13 @@ function App() {
         <header className="mobile-header">
           <BrandMark />
         </header>
+
+        {!isOnline && (
+          <div className="network-status" role="status" aria-live="polite">
+            <WifiOff size={16} aria-hidden="true" />
+            <span><strong>Mode hors ligne</strong> · Vos changements restent sur cet appareil et seront synchronisés au retour du réseau.</span>
+          </div>
+        )}
 
         <AnimatePresence mode="wait">
         {view === 'wardrobe' ? (
@@ -1585,7 +1560,9 @@ function App() {
                             transition={TRANSITIONS.spring}
                           >
                             <div className="outfit-number">0{index + 1}</div>
-                            <OutfitBoard items={items} lookNumber={index + 1} />
+                            <Suspense fallback={<div className="outfit-board-loading" aria-hidden="true" />}>
+                              <OutfitBoard items={items} lookNumber={index + 1} />
+                            </Suspense>
                             <div className="outfit-card-body">
                               <div className="outfit-title-row">
                                 <div>
@@ -1662,7 +1639,9 @@ function App() {
                 </div>
               </div>
             </header>
-            <OutfitHistory outfits={state.outfits} items={state.items} />
+            <Suspense fallback={<div className="history-loading" role="status">Chargement de l’historique…</div>}>
+              <OutfitHistory outfits={state.outfits} items={state.items} />
+            </Suspense>
           </motion.div>
         ) : (
           <motion.div
@@ -1774,10 +1753,10 @@ function App() {
       </main>
 
       <nav className="mobile-nav" aria-label="Navigation principale">
-        <button className={view === 'wardrobe' ? 'is-active' : ''} onClick={() => setView('wardrobe')}>
+        <button className={view === 'wardrobe' ? 'is-active' : ''} onClick={() => setView('wardrobe')} aria-current={view === 'wardrobe' ? 'page' : undefined}>
           <Grid2X2 size={20} /><span>Dressing</span>
         </button>
-        <button className={view === 'generate' ? 'is-active' : ''} onClick={() => setView('generate')}>
+        <button className={view === 'generate' ? 'is-active' : ''} onClick={() => setView('generate')} aria-current={view === 'generate' ? 'page' : undefined}>
           <WandSparkles size={20} /><span>Générer</span>
         </button>
         <button className="mobile-add" onClick={() => setAddOpen(true)} aria-label="Ajouter une pièce">
@@ -1787,26 +1766,29 @@ function App() {
           className={view === 'history' ? 'is-active' : ''}
           onClick={() => setView('history')}
           aria-label="Ouvrir l’historique"
+          aria-current={view === 'history' ? 'page' : undefined}
         >
           <CalendarDays size={20} /><span>Historique</span>
         </button>
-        <button className={view === 'profile' ? 'is-active' : ''} onClick={openProfile} aria-label="Ouvrir le profil">
+        <button className={view === 'profile' ? 'is-active' : ''} onClick={openProfile} aria-label="Ouvrir le profil" aria-current={view === 'profile' ? 'page' : undefined}>
           <CircleUserRound size={20} /><span>Profil</span>
         </button>
       </nav>
 
-      <HelpChat
-        currentView={view}
-        onAction={(action) => {
-          if (action === 'add-item') {
-            setAddOpen(true)
-          } else if (action === 'profile') {
-            openProfile()
-          } else {
-            setView(action)
-          }
-        }}
-      />
+      <Suspense fallback={null}>
+        <HelpChat
+          currentView={view}
+          onAction={(action) => {
+            if (action === 'add-item') {
+              setAddOpen(true)
+            } else if (action === 'profile') {
+              openProfile()
+            } else {
+              setView(action)
+            }
+          }}
+        />
+      </Suspense>
 
       <Sheet
         open={addOpen}

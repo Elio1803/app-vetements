@@ -1,7 +1,7 @@
 import type { ClothingCategory } from '../types'
 
-const OUTPUT_WIDTH = 1200
-const OUTPUT_HEIGHT = 1500
+const OUTPUT_WIDTH = 900
+const OUTPUT_HEIGHT = 1125
 
 export type GarmentFocus =
   | 'crop_top'
@@ -22,7 +22,7 @@ export type GarmentFocus =
   | 'jewelry'
 
 function canvasAsDataUrl(canvas: HTMLCanvasElement) {
-  return canvas.toDataURL('image/jpeg', 0.92)
+  return canvas.toDataURL('image/webp', 0.86)
 }
 
 function findVisibleBounds(context: CanvasRenderingContext2D, width: number, height: number) {
@@ -124,7 +124,7 @@ export async function focusPhotoOnCategory(file: File, focus: GarmentFocus): Pro
   bitmap.close()
 
   const blob = await new Promise<Blob>((resolve, reject) => {
-    canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Recadrage indisponible.')), 'image/jpeg', 0.94)
+    canvas.toBlob((result) => result ? resolve(result) : reject(new Error('Recadrage indisponible.')), 'image/jpeg', 0.9)
   })
 
   return new File([blob], file.name || 'vetement.jpg', { type: 'image/jpeg' })

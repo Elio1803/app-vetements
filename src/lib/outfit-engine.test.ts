@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { ClothingCategory, ClothingItem } from "../types";
-import { generateLocalOutfits } from "./outfit-engine";
+import { generateLocalOutfits, generationReadinessFor } from "./outfit-engine";
 
 function item(id: string, category: ClothingCategory, daysAgo: number): ClothingItem {
   const lastWornAt = new Date("2026-07-11T12:00:00.000Z");
@@ -106,5 +106,48 @@ describe("generateLocalOutfits", () => {
     expect(suggestions.every((suggestion) => suggestion.itemIds.includes("coat-1"))).toBe(true);
     expect(suggestions[0].reason).toContain("9 °C ressentis");
     expect(suggestions[0].reason).toContain("pluie");
+  });
+});
+
+describe("generationReadinessFor", () => {
+  const summer = new Date("2026-07-11T12:00:00.000Z");
+  const winter = new Date("2026-01-11T12:00:00.000Z");
+  const separates = [item("top", "haut", 2), item("bottom", "bas", 2)];
+
+  it("requires a complete body layer", () => {
+    const readiness = generationReadinessFor([item("top", "haut", 2)], "quotidien", summer);
+    expect(readiness.canGenerate).toBe(false);
+    expect(readiness.message).toContain("un haut et un bas");
+  });
+
+  it("requires shoes for formal occasions", () => {
+    const readiness = generationReadinessFor(separates, "travail", summer);
+    expect(readiness.canGenerate).toBe(false);
+    expect(readiness.message).toContain("chaussures");
+  });
+
+  it("requires a warm layer in winter", () => {
+    const readiness = generationReadinessFor(separates, "quotidien", winter);
+    expect(readiness.canGenerate).toBe(false);
+    expect(readiness.message).toContain("hiver");
+  });
+
+  it("accepts a season-ready wardrobe and reports live weather", () => {
+    const readiness = generationReadinessFor([
+      ...separates,
+      item("coat", "veste_manteau", 2),
+    ], "quotidien", summer, {
+      temperatureC: 12,
+      apparentTemperatureC: 9,
+      precipitationMm: 1.2,
+      weatherCode: 61,
+      windSpeedKmh: 22,
+      condition: "rain",
+      observedAt: summer.toISOString(),
+      source: "open-meteo",
+    });
+    expect(readiness.canGenerate).toBe(true);
+    expect(readiness.message).toContain("9 °C ressentis");
+    expect(readiness.message).toContain("pluie");
   });
 });

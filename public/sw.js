@@ -1,4 +1,4 @@
-const CACHE_NAME = 'le-dressing-v57'
+const CACHE_NAME = 'le-dressing-v58'
 const resolveFromScope = (path) => new URL(path, self.registration.scope).href
 const APP_SHELL = [
   '',
@@ -13,7 +13,8 @@ const APP_SHELL = [
 
 async function precacheApplication() {
   const cache = await caches.open(CACHE_NAME)
-  await cache.addAll(APP_SHELL)
+  await cache.add(resolveFromScope('index.html'))
+  await Promise.allSettled(APP_SHELL.filter((url) => url !== resolveFromScope('index.html')).map((url) => cache.add(url)))
 
   const indexUrl = resolveFromScope('index.html')
   const indexResponse = await fetch(indexUrl)
@@ -23,7 +24,7 @@ async function precacheApplication() {
     .filter((url) => url.origin === self.location.origin && url.href.startsWith(self.registration.scope))
     .map((url) => url.href)
 
-  await cache.addAll([...new Set(referencedAssets)])
+  await Promise.allSettled([...new Set(referencedAssets)].map((url) => cache.add(url)))
 }
 
 self.addEventListener('install', (event) => {
@@ -56,7 +57,13 @@ self.addEventListener('fetch', (event) => {
           }
           return response
         })
-        .catch(() => caches.match(resolveFromScope('index.html'))),
+        .catch(async () => {
+          const cached = await caches.match(resolveFromScope('index.html'))
+          return cached ?? new Response('Le Dressing est hors ligne. Reconnectez-vous puis réessayez.', {
+            status: 503,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8' },
+          })
+        }),
     )
     return
   }

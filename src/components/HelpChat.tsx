@@ -1,6 +1,6 @@
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Bot, MessageCircleQuestion, Send, Sparkles, Trash2, X } from 'lucide-react'
-import { type FormEvent, useEffect, useRef, useState } from 'react'
+import { type FormEvent, type KeyboardEvent as ReactKeyboardEvent, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { TRANSITIONS } from '../lib/animations'
 import {
@@ -37,6 +37,8 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
   const [messages, setMessages] = useState<ChatMessage[]>([START_MESSAGE])
   const [thinking, setThinking] = useState(false)
   const panel = useRef<HTMLElement>(null)
+  const input = useRef<HTMLInputElement>(null)
+  const launcher = useRef<HTMLButtonElement>(null)
   const messagesContainer = useRef<HTMLDivElement>(null)
   const responseTimer = useRef<number | null>(null)
   const lastTouchY = useRef<number | null>(null)
@@ -53,6 +55,24 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
     })
     return () => window.cancelAnimationFrame(frame)
   }, [messages, open, shouldReduceMotion, thinking])
+
+  useEffect(() => {
+    if (!open) return undefined
+    const appRoot = document.getElementById('root')
+    document.documentElement.classList.add('is-chat-open')
+    if (appRoot) appRoot.inert = true
+    const frame = window.requestAnimationFrame(() => {
+      const mobile = window.matchMedia('(max-width: 680px)').matches
+      ;(mobile ? panel.current : input.current)?.focus({ preventScroll: true })
+    })
+
+    return () => {
+      window.cancelAnimationFrame(frame)
+      document.documentElement.classList.remove('is-chat-open')
+      if (appRoot) appRoot.inert = false
+      window.requestAnimationFrame(() => launcher.current?.focus({ preventScroll: true }))
+    }
+  }, [open])
 
   useEffect(() => {
     if (!open) return
@@ -167,6 +187,29 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
     setMessages([START_MESSAGE])
   }
 
+  const handleDialogKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      setOpen(false)
+      return
+    }
+    if (event.key !== 'Tab') return
+
+    const focusable = [...(panel.current?.querySelectorAll<HTMLElement>(
+      'button:not([disabled]), input:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    ) ?? [])].filter((element) => element.offsetParent !== null)
+    if (!focusable.length) return
+    const first = focusable[0]
+    const last = focusable.at(-1)!
+    if (event.shiftKey && document.activeElement === first) {
+      event.preventDefault()
+      last.focus()
+    } else if (!event.shiftKey && document.activeElement === last) {
+      event.preventDefault()
+      first.focus()
+    }
+  }
+
   return createPortal(
     <div className="help-chat">
       <AnimatePresence>
@@ -191,6 +234,8 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
             role="dialog"
             aria-modal="true"
             aria-labelledby="help-chat-title"
+            tabIndex={-1}
+            onKeyDown={handleDialogKeyDown}
             initial={false}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={shouldReduceMotion ? { opacity: 1 } : { opacity: 0 }}
@@ -231,6 +276,7 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
 
             <form className="help-chat-form" onSubmit={submit}>
               <input
+                ref={input}
                 type="text"
                 value={question}
                 onChange={(event) => setQuestion(event.target.value)}
@@ -245,6 +291,7 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
       </AnimatePresence>
 
       <motion.button
+        ref={launcher}
         className={open ? 'help-chat-launcher is-open' : 'help-chat-launcher'}
         type="button"
         onClick={() => setOpen((current) => !current)}
