@@ -44,6 +44,7 @@ import {
   lazy,
   memo,
   Suspense,
+  useCallback,
   useDeferredValue,
   useEffect,
   useMemo,
@@ -364,7 +365,7 @@ const ClothingCard = memo(function ClothingCard({
   canHover,
 }: {
   item: ClothingItem
-  onOpen: () => void
+  onOpen: (item: ClothingItem) => void
   today: Date
   shouldReduceMotion: boolean
   canHover: boolean
@@ -375,7 +376,7 @@ const ClothingCard = memo(function ClothingCard({
       layout
       variants={shouldReduceMotion ? undefined : cardVariants}
       className="clothing-card"
-      onClick={onOpen}
+      onClick={() => onOpen(item)}
       aria-label={`${item.name ?? 'Pièce sans nom'}, ${status.label}`}
       whileHover={!shouldReduceMotion && canHover ? { y: -4, scale: 1.03 } : undefined}
       whileTap={shouldReduceMotion ? undefined : { scale: 0.97 }}
@@ -404,6 +405,7 @@ const ClothingCard = memo(function ClothingCard({
 }, (previous, next) => (
   previous.item === next.item
   && previous.today === next.today
+  && previous.onOpen === next.onOpen
   && previous.shouldReduceMotion === next.shouldReduceMotion
   && previous.canHover === next.canHover
 ))
@@ -802,12 +804,12 @@ function App() {
     )
   }
 
-  const openItem = (item: ClothingItem) => {
+  const openItem = useCallback((item: ClothingItem) => {
     setSelectedItemId(item.id)
     setEditItem(false)
     setEditName(item.name ?? '')
     setEditCategory(item.category)
-  }
+  }, [])
 
   const preparePhotoFile = async (file: File) => {
     if (!file) return
@@ -1423,7 +1425,7 @@ function App() {
                           {group.items.map((item) => (
                             <ClothingCard
                               item={item}
-                              onOpen={() => openItem(item)}
+                              onOpen={openItem}
                               today={today}
                               shouldReduceMotion={Boolean(shouldReduceMotion)}
                               canHover={canHover}
