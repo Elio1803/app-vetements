@@ -2473,11 +2473,15 @@ select {
 .history-open-card strong { font-family: var(--serif); font-size: .88rem; font-weight: 600; }
 .history-open-card p { margin: 4px 0 0; color: var(--muted-dark); font-size: .61rem; line-height: 1.45; }
 
-.outfit-history { display: grid; gap: 23px; }
+.outfit-history { display: grid; grid-template-columns: minmax(0, 1.08fr) minmax(0, .92fr); align-items: start; gap: 18px; }
 .history-calendar { padding: 16px; border: 1px solid var(--line); border-radius: 14px; background: var(--paper-deep); }
 .history-calendar > header { display: grid; grid-template-columns: 38px 1fr 38px; align-items: center; margin-bottom: 15px; }
 .history-calendar > header strong { font-family: var(--serif); font-size: 1rem; font-weight: 600; text-align: center; }
 .history-calendar > header button { display: grid; width: 36px; height: 36px; place-items: center; border: 1px solid var(--line-dark); border-radius: 50%; background: var(--paper); color: var(--ink); }
+.history-calendar > header button:disabled { opacity: .3; }
+.history-month-summary { display: grid; grid-template-columns: repeat(3, 1fr); margin: 0 0 14px; overflow: hidden; border: 1px solid var(--line); border-radius: 9px; background: var(--line); }
+.history-month-summary span { display: flex; min-height: 46px; align-items: center; justify-content: center; flex-direction: column; background: var(--paper); color: var(--muted); font-size: .48rem; }
+.history-month-summary strong { color: var(--ink); font-family: var(--serif); font-size: .85rem; font-weight: 600; }
 .history-weekdays,
 .history-days { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; }
 .history-weekdays { margin-bottom: 7px; }
@@ -2490,6 +2494,7 @@ select {
 .history-day i { position: absolute; right: 4px; bottom: 4px; display: grid; width: 6px; height: 6px; place-items: center; border-radius: 50%; background: var(--brown); color: white; font-size: .42rem; font-style: normal; }
 .history-day i:not(:empty) { width: 13px; height: 13px; }
 .history-day.is-selected i { background: var(--paper); color: var(--ink); }
+.history-today { display: block; min-height: 34px; margin: 13px auto 0; padding: 0 11px; border: 1px solid var(--line-dark); border-radius: 999px; background: var(--paper); color: var(--ink); font-size: .56rem; font-weight: 700; }
 .history-list-heading { margin-bottom: 12px; }
 .history-list-heading p { margin: 0 0 3px; color: var(--brown); font-size: .55rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
 .history-list-heading strong { font-family: var(--serif); font-size: 1.15rem; font-weight: 550; text-transform: capitalize; }
@@ -2897,6 +2902,10 @@ select {
   .sheet-header { padding: 17px 18px 15px; }
   .sheet-header h2 { max-width: 270px; font-size: 1.43rem; }
   .sheet-body { padding: 18px 18px 27px; }
+  .outfit-history { grid-template-columns: 1fr; gap: 21px; }
+  .history-calendar { padding: 14px; }
+  .history-day { font-size: .68rem; }
+  .history-outfit { grid-template-columns: 102px 1fr; }
   .sheet-footer { padding: 12px 18px calc(12px + env(safe-area-inset-bottom)); }
   .photo-picker { min-height: 225px; padding: 18px 12px; }
   .photo-picker > div:last-child { width: 100%; }

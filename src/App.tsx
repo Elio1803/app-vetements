@@ -1857,6 +1857,7 @@ function App() {
         onClose={() => setHistoryOpen(false)}
         eyebrow="Votre calendrier"
         title="Tenues portées"
+        wide
       >
         <OutfitHistory outfits={state.outfits} items={state.items} />
       </Sheet>

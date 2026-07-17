@@ -1,5 +1,5 @@
 import { CalendarDays, ChevronLeft, ChevronRight, Shirt } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import type { ClothingItem, Outfit } from '../types'
 import { OCCASION_LABELS } from '../lib/wardrobe-utils'
 import { ClothingPhoto } from './ClothingPhoto'
@@ -41,6 +41,7 @@ export function OutfitHistory({ outfits, items }: { outfits: Outfit[]; items: Cl
   const initialDate = wornOutfits[0] ? new Date(wornOutfits[0].wornAt) : new Date()
   const [month, setMonth] = useState(() => new Date(initialDate.getFullYear(), initialDate.getMonth(), 1))
   const [selectedDate, setSelectedDate] = useState(() => localDateKey(initialDate))
+  const hasFocusedHistory = useRef(false)
   const outfitsByDay = useMemo(() => {
     const grouped = new Map<string, Array<Outfit & { wornAt: string }>>()
     for (const outfit of wornOutfits) {
@@ -52,12 +53,37 @@ export function OutfitHistory({ outfits, items }: { outfits: Outfit[]; items: Cl
   const itemById = useMemo(() => new Map(items.map((item) => [item.id, item])), [items])
   const cells = useMemo(() => calendarCells(month), [month])
   const selectedOutfits = outfitsByDay.get(selectedDate) ?? []
+  const monthKeys = useMemo(() => cellsForMonth(outfitsByDay, month), [month, outfitsByDay])
+  const monthOutfits = useMemo(
+    () => monthKeys.flatMap((key) => outfitsByDay.get(key) ?? []),
+    [monthKeys, outfitsByDay],
+  )
+  const uniqueMonthItems = useMemo(
+    () => new Set(monthOutfits.flatMap((outfit) => outfit.itemIds)).size,
+    [monthOutfits],
+  )
+  const currentMonth = new Date()
+  const isCurrentMonth = month.getFullYear() === currentMonth.getFullYear() && month.getMonth() === currentMonth.getMonth()
+
+  useEffect(() => {
+    if (hasFocusedHistory.current || !wornOutfits[0]) return
+    const latest = new Date(wornOutfits[0].wornAt)
+    setMonth(new Date(latest.getFullYear(), latest.getMonth(), 1))
+    setSelectedDate(localDateKey(latest))
+    hasFocusedHistory.current = true
+  }, [wornOutfits])
 
   const changeMonth = (offset: number) => {
     const next = new Date(month.getFullYear(), month.getMonth() + offset, 1)
     setMonth(next)
-    const firstWornDay = cellsForMonth(outfitsByDay, next)[0]
-    setSelectedDate(firstWornDay ?? localDateKey(next))
+    const wornDays = cellsForMonth(outfitsByDay, next)
+    setSelectedDate(wornDays.at(-1) ?? localDateKey(next))
+  }
+
+  const goToToday = () => {
+    const today = new Date()
+    setMonth(new Date(today.getFullYear(), today.getMonth(), 1))
+    setSelectedDate(localDateKey(today))
   }
 
   if (!wornOutfits.length) {
@@ -76,8 +102,13 @@ export function OutfitHistory({ outfits, items }: { outfits: Outfit[]; items: Cl
         <header>
           <button type="button" onClick={() => changeMonth(-1)} aria-label="Mois précédent"><ChevronLeft size={18} /></button>
           <strong>{monthLabel(month)}</strong>
-          <button type="button" onClick={() => changeMonth(1)} aria-label="Mois suivant"><ChevronRight size={18} /></button>
+          <button type="button" onClick={() => changeMonth(1)} aria-label="Mois suivant" disabled={isCurrentMonth}><ChevronRight size={18} /></button>
         </header>
+        <div className="history-month-summary">
+          <span><strong>{monthOutfits.length}</strong> tenue{monthOutfits.length > 1 ? 's' : ''}</span>
+          <span><strong>{monthKeys.length}</strong> jour{monthKeys.length > 1 ? 's' : ''}</span>
+          <span><strong>{uniqueMonthItems}</strong> pièce{uniqueMonthItems > 1 ? 's' : ''}</span>
+        </div>
         <div className="history-weekdays" aria-hidden="true">
           {WEEK_DAYS.map((day, index) => <span key={`${day}-${index}`}>{day}</span>)}
         </div>
@@ -102,6 +133,7 @@ export function OutfitHistory({ outfits, items }: { outfits: Outfit[]; items: Cl
             )
           })}
         </div>
+        {!isCurrentMonth && <button className="history-today" type="button" onClick={goToToday}>Revenir à aujourd’hui</button>}
       </section>
 
       <section className="history-list" aria-live="polite">
