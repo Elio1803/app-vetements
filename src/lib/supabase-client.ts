@@ -73,6 +73,7 @@ export async function loadRemoteWardrobe(user: User) {
     .filter((item): item is ClothingItem => Boolean(item))
   const resolved = await withSignedPhotoUrls(items)
   wardrobeStore.replaceItems(resolved.items)
+  await wardrobeApi.listWornOutfits(user.id)
   return resolved.storagePaths
 }
 

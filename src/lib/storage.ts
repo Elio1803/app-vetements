@@ -115,7 +115,7 @@ function stringArray(value: unknown): string[] {
   return [...new Set(value.filter((entry): entry is string => typeof entry === "string"))];
 }
 
-function normalizeOutfit(value: unknown, fallbackUserId: string): Outfit | null {
+export function normalizeOutfit(value: unknown, fallbackUserId: string): Outfit | null {
   if (!isRecord(value)) return null;
   const itemIds = stringArray(value.itemIds ?? value.item_ids);
   if (!itemIds.length) return null;

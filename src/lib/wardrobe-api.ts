@@ -11,7 +11,7 @@ import type {
   OutfitSuggestion,
   WardrobeApiMode,
 } from "../types";
-import { createEntityId, normalizeClothingItem } from "./storage";
+import { createEntityId, normalizeClothingItem, normalizeOutfit } from "./storage";
 import { CATEGORY_LABELS_SINGULAR } from "./wardrobe-utils";
 import { wardrobeStore, type WardrobeStore } from "./wardrobe-store";
 
@@ -37,6 +37,7 @@ export interface WardrobeApi {
   readonly lastRemoteError: Error | null;
   setAccessToken(token: WardrobeApiOptions["accessToken"]): void;
   listItems(userId: string): Promise<ClothingItem[]>;
+  listWornOutfits(userId: string): Promise<Outfit[]>;
   createItem(input: NewClothingItem & { userId: string }): Promise<ClothingItem>;
   updateItem(id: string, patch: ClothingItemPatch): Promise<ClothingItem | null>;
   deleteItem(id: string): Promise<boolean>;
@@ -194,6 +195,29 @@ export class SupabaseWardrobeApi implements WardrobeApi {
     } catch (error) {
       this.recordFallback(error);
       return this.store.getSnapshot().items;
+    }
+  }
+
+  async listWornOutfits(userId: string): Promise<Outfit[]> {
+    if (this.mode === "local") return this.store.getSnapshot().outfits;
+    try {
+      const data = await this.request(
+        `/rest/v1/outfits?user_id=eq.${encodeURIComponent(userId)}&worn_at=not.is.null&select=id,user_id,occasion,item_ids,ai_name,ai_reason,worn_at,created_at&order=worn_at.desc`,
+        { headers: { Accept: "application/json" } },
+      );
+      if (!Array.isArray(data)) throw new Error("Réponse outfits invalide.");
+      const outfits = data
+        .map((row) => normalizeOutfit({
+          ...(isRecord(row) ? row : {}),
+          name: isRecord(row) ? row.ai_name : undefined,
+        }, userId))
+        .filter((outfit): outfit is Outfit => Boolean(outfit));
+      this.store.mergeOutfits(outfits);
+      this.remoteError = null;
+      return outfits;
+    } catch (error) {
+      this.recordFallback(error);
+      return this.store.getSnapshot().outfits;
     }
   }
 
@@ -406,7 +430,7 @@ export class SupabaseWardrobeApi implements WardrobeApi {
         body: JSON.stringify({ p_outfit_id: suggestion.id }),
       });
       this.remoteError = null;
-      return this.store.markOutfitWorn(suggestion, wornAt);
+      return this.store.markOutfitWorn(suggestion, wornAt, suggestion.id);
     } catch (error) {
       this.recordFallback(error);
       throw asError(error);

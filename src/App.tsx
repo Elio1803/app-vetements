@@ -6,6 +6,7 @@ import {
 } from 'framer-motion'
 import {
   BriefcaseBusiness,
+  CalendarDays,
   Camera,
   Check,
   ChevronRight,
@@ -50,6 +51,7 @@ import { LoginScreen, PasswordRecoveryScreen } from './components/AuthScreens'
 import { ClothingPhoto } from './components/ClothingPhoto'
 import { LoadingScreen } from './components/LoadingScreen'
 import { OutfitBoard } from './components/OutfitBoard'
+import { OutfitHistory } from './components/OutfitHistory'
 import { Sheet } from './components/Sheet'
 import { SkeletonCard } from './components/SkeletonCard'
 import { cardVariants, gridVariants, screenVariants, toastVariants, TRANSITIONS } from './lib/animations'
@@ -440,6 +442,7 @@ function App() {
   const [query, setQuery] = useState('')
   const [addOpen, setAddOpen] = useState(false)
   const [accountOpen, setAccountOpen] = useState(false)
+  const [historyOpen, setHistoryOpen] = useState(false)
   const [selectedItemId, setSelectedItemId] = useState<string | null>(null)
   const [editItem, setEditItem] = useState(false)
   const [editName, setEditName] = useState('')
@@ -1795,6 +1798,21 @@ function App() {
           <span><strong><AnimatedCounter value={state.outfits.length} /></strong> tenues portées</span>
           <span><strong><AnimatedCounter value={stats.rotationScore} suffix="%" /></strong> en rotation</span>
         </div>
+        <button
+          className="history-open-card"
+          type="button"
+          onClick={() => {
+            setAccountOpen(false)
+            setHistoryOpen(true)
+          }}
+        >
+          <span><CalendarDays size={23} /></span>
+          <div>
+            <strong>Historique des tenues</strong>
+            <p>Retrouvez dans le calendrier ce que vous avez porté chaque jour.</p>
+          </div>
+          <ChevronRight size={18} />
+        </button>
         {supabase && (
           <div className={syncError ? 'sync-card sync-card--error' : 'sync-card'}>
             <span className="sync-card-icon">
@@ -1832,6 +1850,15 @@ function App() {
           )}
         </div>
         <button className="danger-button full-button" onClick={signOut}><LogOut size={17} /> Se déconnecter</button>
+      </Sheet>
+
+      <Sheet
+        open={historyOpen}
+        onClose={() => setHistoryOpen(false)}
+        eyebrow="Votre calendrier"
+        title="Tenues portées"
+      >
+        <OutfitHistory outfits={state.outfits} items={state.items} />
       </Sheet>
 
       <AnimatePresence>

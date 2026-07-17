@@ -187,6 +187,7 @@ export class WardrobeStore {
   markOutfitWorn(
     suggestionOrId: OutfitSuggestion | string,
     wornAt = new Date().toISOString(),
+    outfitIdOverride?: string,
   ): Outfit {
     const suggestion =
       typeof suggestionOrId === "string"
@@ -194,8 +195,11 @@ export class WardrobeStore {
         : suggestionOrId;
     if (!suggestion) throw new Error("Cette proposition de tenue est introuvable.");
 
-    const outfitId = `worn-${suggestion.id}`;
-    const alreadyWorn = this.state.outfits.find((outfit) => outfit.id === outfitId);
+    const outfitId = outfitIdOverride ?? `worn-${suggestion.id}`;
+    const canonicalId = outfitId.replace(/^worn-/, "");
+    const alreadyWorn = this.state.outfits.find(
+      (outfit) => outfit.id.replace(/^worn-/, "") === canonicalId,
+    );
     if (alreadyWorn) return alreadyWorn;
 
     const wornAtIso = toIsoString(wornAt);
@@ -229,6 +233,24 @@ export class WardrobeStore {
       .filter((item): item is ClothingItem => Boolean(item));
     const deduped = [...new Map(normalized.map((item) => [item.id, item])).values()];
     this.commit({ ...this.state, items: deduped });
+  }
+
+  mergeOutfits(outfits: Outfit[]): void {
+    const merged = new Map<string, Outfit>();
+    for (const outfit of [...this.state.outfits, ...outfits]) {
+      if (!outfit.wornAt) continue;
+      const canonicalId = outfit.id.replace(/^worn-/, "");
+      const current = merged.get(canonicalId);
+      if (!current || current.id.startsWith("worn-") || !outfit.id.startsWith("worn-")) {
+        merged.set(canonicalId, outfit);
+      }
+    }
+    this.commit({
+      ...this.state,
+      outfits: [...merged.values()].sort((a, b) =>
+        Date.parse(b.wornAt ?? b.createdAt) - Date.parse(a.wornAt ?? a.createdAt)
+      ),
+    });
   }
 
   getStats(now = new Date()): WardrobeStats {

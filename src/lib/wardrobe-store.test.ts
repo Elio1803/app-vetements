@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import type {
   ClothingCategory,
   ClothingItem,
+  Outfit,
   OutfitSuggestion,
   WardrobeState,
 } from "../types";
@@ -184,5 +185,32 @@ describe("WardrobeStore.markOutfitWorn", () => {
       2,
     ]);
     restoredStore.dispose();
+  });
+
+  it("merges cloud history without duplicating a locally mirrored outfit", () => {
+    const store = new WardrobeStore(emptyState(), createIsolatedMemoryPersistence());
+    const localOutfit: Outfit = {
+      id: "worn-cloud-outfit-1",
+      userId: "test-user",
+      occasion: "quotidien",
+      itemIds: ["top", "bottom"],
+      name: "Tenue locale",
+      aiReason: "Test",
+      wornAt: "2026-07-11T09:00:00.000Z",
+      createdAt: "2026-07-11T08:00:00.000Z",
+    };
+    store.mergeOutfits([localOutfit]);
+    store.mergeOutfits([{
+      ...localOutfit,
+      id: "cloud-outfit-1",
+      name: "Tenue synchronisée",
+    }]);
+
+    expect(store.getSnapshot().outfits).toHaveLength(1);
+    expect(store.getSnapshot().outfits[0]).toMatchObject({
+      id: "cloud-outfit-1",
+      name: "Tenue synchronisée",
+    });
+    store.dispose();
   });
 });
