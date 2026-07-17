@@ -1151,6 +1151,17 @@ function App() {
             Créer une tenue
             {view === 'generate' && <span className="nav-dot" />}
           </button>
+          <button
+            className={historyOpen ? 'is-active' : ''}
+            onClick={() => {
+              setAccountOpen(false)
+              setHistoryOpen(true)
+            }}
+          >
+            <CalendarDays size={19} />
+            Historique
+            {historyOpen && <span className="nav-dot" />}
+          </button>
         </nav>
         <button className="sidebar-add" onClick={() => setAddOpen(true)}>
           <Plus size={19} />
@@ -1581,11 +1592,21 @@ function App() {
         <button className={view === 'wardrobe' ? 'is-active' : ''} onClick={() => setView('wardrobe')}>
           <Grid2X2 size={20} /><span>Dressing</span>
         </button>
+        <button className={view === 'generate' ? 'is-active' : ''} onClick={() => setView('generate')}>
+          <WandSparkles size={20} /><span>Générer</span>
+        </button>
         <button className="mobile-add" onClick={() => setAddOpen(true)} aria-label="Ajouter une pièce">
           <Plus size={24} />
         </button>
-        <button className={view === 'generate' ? 'is-active' : ''} onClick={() => setView('generate')}>
-          <WandSparkles size={20} /><span>Générer</span>
+        <button
+          className={historyOpen ? 'is-active' : ''}
+          onClick={() => {
+            setAccountOpen(false)
+            setHistoryOpen(true)
+          }}
+          aria-label="Ouvrir l’historique"
+        >
+          <CalendarDays size={20} /><span>Historique</span>
         </button>
         <button className={accountOpen ? 'is-active' : ''} onClick={() => setAccountOpen(true)} aria-label="Ouvrir le profil">
           <CircleUserRound size={20} /><span>Profil</span>
