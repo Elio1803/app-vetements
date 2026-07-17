@@ -2538,6 +2538,8 @@ select {
   background: var(--paper);
   box-shadow: 0 24px 70px rgba(20, 18, 16, .24);
   flex-direction: column;
+  overscroll-behavior: contain;
+  touch-action: manipulation;
   transform-origin: 100% 100%;
 }
 .help-chat-header {
@@ -2556,7 +2558,7 @@ select {
 .help-chat-header small i { width: 6px; height: 6px; border-radius: 50%; background: #4ca66a; box-shadow: 0 0 0 3px rgba(76,166,106,.12); }
 .help-chat-header > button { display: grid; width: 34px; height: 34px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted-dark); }
 .help-chat-header > button:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
-.help-chat-messages { flex: 1; padding: 16px 14px 10px; overflow-y: auto; overscroll-behavior: contain; }
+.help-chat-messages { flex: 1; padding: 16px 14px 10px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
 .help-message { display: flex; align-items: flex-end; gap: 7px; margin-bottom: 12px; }
 .help-message--user { justify-content: flex-end; }
 .help-message-icon { display: grid; width: 25px; height: 25px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--paper-deep); color: var(--brown); }
@@ -2570,6 +2572,9 @@ select {
 .help-typing i:nth-child(3) { animation-delay: 220ms; }
 @keyframes help-typing-bounce { 0%, 60%, 100% { transform: translateY(0); opacity: .45; } 30% { transform: translateY(-4px); opacity: 1; } }
 .help-suggestions { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 14px 11px; }
+.help-chat-header,
+.help-suggestions,
+.help-chat-form { touch-action: manipulation; }
 .help-suggestions button { min-height: 31px; padding: 0 10px; border: 1px solid var(--line); border-radius: 999px; background: var(--paper-deep); color: var(--muted-dark); font-size: .53rem; font-weight: 650; }
 .help-chat-form { display: grid; grid-template-columns: minmax(0, 1fr) 42px; gap: 8px; padding: 11px 12px calc(11px + env(safe-area-inset-bottom)); border-top: 1px solid var(--line); background: var(--paper); }
 .help-chat-form input { min-width: 0; height: 42px; padding: 0 12px; border: 1px solid var(--line-dark); border-radius: 12px; outline: 0; background: var(--paper-deep); color: var(--ink); font-size: .67rem; }
