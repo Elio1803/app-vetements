@@ -2566,7 +2566,7 @@ select {
 .help-chat-header small i { width: 6px; height: 6px; border-radius: 50%; background: #4ca66a; box-shadow: 0 0 0 3px rgba(76,166,106,.12); }
 .help-chat-header > button { display: grid; width: 34px; height: 34px; place-items: center; padding: 0; border: 0; border-radius: 50%; background: transparent; color: var(--muted-dark); }
 .help-chat-header > button:hover { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
-.help-chat-messages { flex: 1; padding: 16px 14px 10px; overflow-y: auto; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; touch-action: pan-y; }
+.help-chat-messages { flex: 1; padding: 16px 14px 10px; overflow-y: auto; overscroll-behavior: none; touch-action: none; }
 .help-message { display: flex; align-items: flex-end; gap: 7px; margin-bottom: 12px; }
 .help-message--user { justify-content: flex-end; }
 .help-message-icon { display: grid; width: 25px; height: 25px; flex: 0 0 auto; place-items: center; border-radius: 50%; background: var(--paper-deep); color: var(--brown); }

@@ -68,26 +68,27 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
         : null
 
       if (messages) {
-        const atTop = messages.scrollTop <= 0
-        const atBottom = messages.scrollTop + messages.clientHeight >= messages.scrollHeight - 1
-        const movement = event instanceof TouchEvent
-          ? (lastTouchY.current ?? event.touches[0]?.clientY ?? 0) - (event.touches[0]?.clientY ?? 0)
-          : event.deltaY
-
-        if (event instanceof TouchEvent) lastTouchY.current = event.touches[0]?.clientY ?? null
-        if ((movement < 0 && !atTop) || (movement > 0 && !atBottom)) return
+        if (event instanceof TouchEvent) {
+          const currentTouchY = event.touches[0]?.clientY
+          if (currentTouchY !== undefined && lastTouchY.current !== null) {
+            messages.scrollTop += lastTouchY.current - currentTouchY
+          }
+          lastTouchY.current = currentTouchY ?? null
+        } else {
+          messages.scrollTop += event.deltaY
+        }
       }
       event.preventDefault()
     }
 
-    document.addEventListener('touchstart', rememberTouchPosition, { passive: true })
-    document.addEventListener('touchmove', preventBackgroundScroll, { passive: false })
-    document.addEventListener('wheel', preventBackgroundScroll, { passive: false })
+    document.addEventListener('touchstart', rememberTouchPosition, { passive: true, capture: true })
+    document.addEventListener('touchmove', preventBackgroundScroll, { passive: false, capture: true })
+    document.addEventListener('wheel', preventBackgroundScroll, { passive: false, capture: true })
 
     return () => {
-      document.removeEventListener('touchstart', rememberTouchPosition)
-      document.removeEventListener('touchmove', preventBackgroundScroll)
-      document.removeEventListener('wheel', preventBackgroundScroll)
+      document.removeEventListener('touchstart', rememberTouchPosition, true)
+      document.removeEventListener('touchmove', preventBackgroundScroll, true)
+      document.removeEventListener('wheel', preventBackgroundScroll, true)
       lastTouchY.current = null
     }
   }, [open])
