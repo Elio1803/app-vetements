@@ -28,12 +28,6 @@ export const cardVariants: Variants = {
   exit: { opacity: 0, scale: 0.9 },
 }
 
-export const sheetVariants: Variants = {
-  initial: { y: '100%' },
-  animate: { y: 0 },
-  exit: { y: '100%' },
-}
-
 export const toastVariants: Variants = {
   initial: { opacity: 0, y: -22, scale: 0.98 },
   animate: { opacity: 1, y: 0, scale: 1 },

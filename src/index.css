@@ -2071,7 +2071,8 @@ select {
   inset: 0;
   border: 0;
   background: rgba(25, 23, 20, 0.44);
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(2px);
+  will-change: opacity;
 }
 
 .sheet-panel {
@@ -2084,13 +2085,12 @@ select {
   background: var(--paper);
   box-shadow: -20px 0 60px rgba(20, 18, 16, 0.16);
   animation: none;
+  backface-visibility: hidden;
+  contain: layout;
+  will-change: transform, opacity;
 }
 
 .sheet-panel--wide { width: min(650px, 100%); }
-
-@keyframes slide-in {
-  from { transform: translateX(24px); opacity: 0.7; }
-}
 
 .sheet-handle { display: none; }
 
@@ -2930,8 +2930,8 @@ select {
   .empty-metrics { width: 100%; }
   .empty-metrics span { min-width: 0; flex: 1; padding: 9px 4px; }
   .sheet-layer { align-items: flex-end; }
-  .sheet-panel { width: 100%; height: min(92vh, 820px); border-radius: 18px 18px 0 0; animation-name: sheet-up; }
-  @keyframes sheet-up { from { transform: translateY(24px); opacity: .7; } }
+  .sheet-backdrop { backdrop-filter: none; }
+  .sheet-panel { width: 100%; height: min(92vh, 820px); border-radius: 18px 18px 0 0; }
   .sheet-handle { display: block; width: 35px; height: 4px; margin: 8px auto 0; border-radius: 99px; background: #c9c1b7; }
   .sheet-header { padding: 17px 18px 15px; }
   .sheet-header h2 { max-width: 270px; font-size: 1.43rem; }

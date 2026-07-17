@@ -1,7 +1,7 @@
-import type { PropsWithChildren, ReactNode } from 'react'
+import { type PropsWithChildren, type ReactNode, useEffect, useState } from 'react'
 import { X } from 'lucide-react'
 import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
-import { sheetVariants, TRANSITIONS } from '../lib/animations'
+import { TRANSITIONS } from '../lib/animations'
 
 interface SheetProps extends PropsWithChildren {
   open: boolean
@@ -14,6 +14,35 @@ interface SheetProps extends PropsWithChildren {
 
 export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, children }: SheetProps) {
   const shouldReduceMotion = useReducedMotion()
+  const [mobile, setMobile] = useState(() => (
+    typeof window !== 'undefined' && window.matchMedia('(max-width: 680px)').matches
+  ))
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 680px)')
+    const update = () => setMobile(query.matches)
+    update()
+    query.addEventListener('change', update)
+    return () => query.removeEventListener('change', update)
+  }, [])
+
+  const panelVariants = mobile
+    ? {
+        initial: { y: '100%', opacity: 0.96, scale: 0.995 },
+        animate: { y: 0, opacity: 1, scale: 1 },
+        exit: { y: '100%', opacity: 0.96, scale: 0.995 },
+      }
+    : {
+        initial: { x: '100%', opacity: 0.94 },
+        animate: { x: 0, opacity: 1 },
+        exit: { x: '100%', opacity: 0.96 },
+      }
+  const panelTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : { type: 'spring' as const, stiffness: 260, damping: 31, mass: 0.82 }
+  const contentTransition = shouldReduceMotion
+    ? { duration: 0 }
+    : { duration: 0.28, delay: 0.08, ease: [0.22, 1, 0.36, 1] as const }
 
   return (
     <AnimatePresence>
@@ -26,21 +55,26 @@ export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, chi
             initial={shouldReduceMotion ? false : { opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            transition={TRANSITIONS.screen}
+            transition={shouldReduceMotion ? { duration: 0 } : { duration: 0.28, ease: 'easeOut' }}
           />
           <motion.section
             className={`sheet-panel ${wide ? 'sheet-panel--wide' : ''}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="sheet-title"
-            variants={shouldReduceMotion ? undefined : sheetVariants}
+            variants={shouldReduceMotion ? undefined : panelVariants}
             initial="initial"
             animate="animate"
             exit="exit"
-            transition={TRANSITIONS.hero}
+            transition={panelTransition}
           >
             <div className="sheet-handle" aria-hidden="true" />
-            <header className="sheet-header">
+            <motion.header
+              className="sheet-header"
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 7 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={contentTransition}
+            >
               <div>
                 {eyebrow && <p className="eyebrow">{eyebrow}</p>}
                 <h2 id="sheet-title">{title}</h2>
@@ -54,9 +88,16 @@ export function Sheet({ open, title, eyebrow, onClose, footer, wide = false, chi
               >
                 <X size={20} />
               </motion.button>
-            </header>
-            <div className="sheet-body">{children}</div>
-            {footer && <footer className="sheet-footer">{footer}</footer>}
+            </motion.header>
+            <motion.div
+              className="sheet-body"
+              initial={shouldReduceMotion ? false : { opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={shouldReduceMotion ? { duration: 0 } : { ...contentTransition, delay: 0.12 }}
+            >
+              {children}
+            </motion.div>
+            {footer && <motion.footer className="sheet-footer" initial={shouldReduceMotion ? false : { opacity: 0 }} animate={{ opacity: 1 }} transition={contentTransition}>{footer}</motion.footer>}
           </motion.section>
         </div>
       )}
