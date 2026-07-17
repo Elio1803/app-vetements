@@ -2758,6 +2758,8 @@ select {
 .auth-tabs { display: grid; grid-template-columns: 1fr 1fr; margin-bottom: 24px; border-bottom: 1px solid var(--line); }
 .auth-tabs button { min-height: 44px; padding: 0; border: 0; border-bottom: 2px solid transparent; background: transparent; color: var(--muted); font-size: .7rem; font-weight: 600; }
 .auth-tabs button.is-active { border-bottom-color: var(--ink); color: var(--ink); }
+.profile-name-field { margin-bottom: 18px; }
+.profile-name-field small { display: block; margin-top: 7px; color: var(--muted); font-size: .56rem; line-height: 1.4; }
 .password-label-row { display: flex; align-items: center; justify-content: space-between; margin-top: 18px; }
 .password-label-row .field-label { margin: 0 0 9px; }
 .password-label-row .text-link { min-height: auto; margin-bottom: 8px; border: 0; font-size: .58rem; }

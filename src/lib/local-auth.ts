@@ -1,3 +1,5 @@
+import { normalizeProfileName, profileNameFromEmail } from './profile'
+
 const LOCAL_ACCOUNTS_KEY = 'le-dressing:accounts:v1'
 const LOCAL_SESSION_KEY = 'le-dressing:session:v1'
 const PASSWORD_ITERATIONS = 120_000
@@ -8,11 +10,13 @@ interface StoredLocalAccount {
   salt: string
   passwordHash: string
   createdAt: string
+  profileName?: string
 }
 
 export interface LocalAccountSession {
   userId: string
   email: string
+  profileName: string
 }
 
 export class LocalAuthError extends Error {}
@@ -40,7 +44,11 @@ function loadAccounts(): StoredLocalAccount[] {
       typeof (entry as StoredLocalAccount).userId === 'string' &&
       typeof (entry as StoredLocalAccount).email === 'string' &&
       typeof (entry as StoredLocalAccount).salt === 'string' &&
-      typeof (entry as StoredLocalAccount).passwordHash === 'string'
+      typeof (entry as StoredLocalAccount).passwordHash === 'string' &&
+      (
+        typeof (entry as StoredLocalAccount).profileName === 'undefined' ||
+        typeof (entry as StoredLocalAccount).profileName === 'string'
+      )
     ))
   } catch {
     return []
@@ -101,19 +109,29 @@ export function getLocalSession(): LocalAccountSession | null {
     const session = JSON.parse(raw) as Partial<LocalAccountSession>
     if (typeof session.userId !== 'string' || typeof session.email !== 'string') return null
     const exists = loadAccounts().some((account) => account.userId === session.userId)
-    return exists ? { userId: session.userId, email: session.email } : null
+    if (!exists) return null
+    const account = loadAccounts().find((candidate) => candidate.userId === session.userId)
+    return {
+      userId: session.userId,
+      email: session.email,
+      profileName: normalizeProfileName(account?.profileName ?? '') || profileNameFromEmail(session.email),
+    }
   } catch {
     return null
   }
 }
 
-export async function createLocalAccount(email: string, password: string) {
+export async function createLocalAccount(email: string, password: string, profileName: string) {
   const normalizedEmail = normalizeEmail(email)
   if (!normalizedEmail || !normalizedEmail.includes('@')) {
     throw new LocalAuthError('Saisissez une adresse e-mail valide.')
   }
   if (password.length < 8) {
     throw new LocalAuthError('Le mot de passe doit contenir au moins 8 caractères.')
+  }
+  const normalizedProfileName = normalizeProfileName(profileName)
+  if (!normalizedProfileName) {
+    throw new LocalAuthError('Choisissez un nom de profil.')
   }
 
   const accounts = loadAccounts()
@@ -128,9 +146,10 @@ export async function createLocalAccount(email: string, password: string) {
     salt: bytesToBase64(salt),
     passwordHash: await passwordHash(password, salt),
     createdAt: new Date().toISOString(),
+    profileName: normalizedProfileName,
   }
   saveAccounts([...accounts, account])
-  const session = { userId: account.userId, email: account.email }
+  const session = { userId: account.userId, email: account.email, profileName: normalizedProfileName }
   saveSession(session)
   return session
 }
@@ -145,7 +164,11 @@ export async function signInLocalAccount(email: string, password: string) {
     throw new LocalAuthError('Adresse e-mail ou mot de passe incorrect.')
   }
 
-  const session = { userId: account.userId, email: account.email }
+  const session = {
+    userId: account.userId,
+    email: account.email,
+    profileName: normalizeProfileName(account.profileName ?? '') || profileNameFromEmail(account.email),
+  }
   saveSession(session)
   return session
 }

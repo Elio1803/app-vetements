@@ -57,6 +57,7 @@ import { SkeletonCard } from './components/SkeletonCard'
 import { cardVariants, gridVariants, screenVariants, toastVariants, TRANSITIONS } from './lib/animations'
 import { daysSince, formatLastWorn } from './lib/dates'
 import { wardrobeSeasonForDate, wardrobeSeasonLabel } from './lib/outfit-engine'
+import { normalizeProfileName, profileNameFromEmail, profileNameFromMetadata } from './lib/profile'
 import {
   createLocalAccount,
   getLocalSession,
@@ -436,6 +437,7 @@ function App() {
   const [bootLoading, setBootLoading] = useState(true)
   const [currentUserId, setCurrentUserId] = useState<string | null>(() => initialLocalSession?.userId ?? null)
   const [currentEmail, setCurrentEmail] = useState<string | null>(() => initialLocalSession?.email ?? null)
+  const [currentProfileName, setCurrentProfileName] = useState<string>(() => initialLocalSession?.profileName ?? '')
   const [view, setView] = useState<AppView>('wardrobe')
   const [category, setCategory] = useState<CategoryFilter>('all')
   const [sortMode, setSortMode] = useState<SortMode>('rotation')
@@ -508,7 +510,10 @@ function App() {
       setAuthenticated(Boolean(userId))
       if (userId) {
         const { data } = await supabaseClient.auth.getUser()
-        if (active) setCurrentEmail(data.user?.email ?? null)
+        if (active) {
+          setCurrentEmail(data.user?.email ?? null)
+          setCurrentProfileName(profileNameFromMetadata(data.user?.user_metadata, data.user?.email))
+        }
         if (data.user && active) {
           const pendingLocalItems = wardrobeStore.getSnapshot().items.filter((item) =>
             isLocalPhotoUrl(item.photoUrl)
@@ -526,7 +531,10 @@ function App() {
           void sendWelcomeEmail().catch(() => undefined)
         }
       }
-      if (!userId && active) setCurrentEmail(null)
+      if (!userId && active) {
+        setCurrentEmail(null)
+        setCurrentProfileName('')
+      }
       if (active) setAuthLoading(false)
     }
 
@@ -684,9 +692,7 @@ function App() {
   }, [authenticated, authLoading, bootLoading])
 
   const stats = wardrobeStore.getStats()
-  const displayName = currentEmail
-    ? `${currentEmail.split('@')[0]?.charAt(0).toLocaleUpperCase('fr')}${currentEmail.split('@')[0]?.slice(1)}`
-    : 'Élise'
+  const displayName = currentProfileName || profileNameFromEmail(currentEmail)
   const displayInitials = displayName
     .split(/[\s._-]+/)
     .map((part) => part.charAt(0))
@@ -1035,23 +1041,27 @@ function App() {
     }
     setCurrentUserId(null)
     setCurrentEmail(null)
+    setCurrentProfileName('')
     setAccountOpen(false)
     setAppEntering(false)
     setAuthenticated(false)
   }
 
-  const signIn = async (email: string, password: string, createAccount: boolean) => {
+  const signIn = async (email: string, password: string, createAccount: boolean, profileName: string) => {
+    const chosenProfileName = normalizeProfileName(profileName)
+    if (createAccount && !chosenProfileName) return 'Choisissez un nom de profil.'
     if (!supabase) {
       try {
         const session = createAccount
-          ? await createLocalAccount(email, password)
+          ? await createLocalAccount(email, password, chosenProfileName)
           : await signInLocalAccount(email, password)
         wardrobeStore.switchToAccount(session.userId)
         setCurrentUserId(session.userId)
         setCurrentEmail(session.email)
+        setCurrentProfileName(session.profileName)
         setAppEntering(true)
         setAuthenticated(true)
-        if (createAccount) showToast(`Bonjour ${session.email.split('@')[0]}, votre dressing est prêt.`)
+        if (createAccount) showToast(`Bonjour ${session.profileName}, votre dressing est prêt.`)
         return null
       } catch (error) {
         return error instanceof LocalAuthError
@@ -1063,7 +1073,10 @@ function App() {
       ? await supabase.auth.signUp({
           email,
           password,
-          options: { emailRedirectTo: authRedirectUrl() },
+          options: {
+            emailRedirectTo: authRedirectUrl(),
+            data: { display_name: chosenProfileName },
+          },
         })
       : await supabase.auth.signInWithPassword({ email, password })
     if (result.error) return authErrorMessage(result.error, email)
@@ -1196,7 +1209,7 @@ function App() {
             <header className="page-heading wardrobe-heading">
               <div>
                 <p className="eyebrow">{formatToday(today)} · Votre sélection</p>
-                <h1>Bonjour,</h1>
+                <h1>Bonjour {displayName},</h1>
                 <p className="heading-script">que porte-t-on aujourd’hui ?</p>
               </div>
               <div className="page-heading-actions">
@@ -1822,7 +1835,8 @@ function App() {
         <div className="account-card">
           <span className="account-avatar"><CircleUserRound size={29} /></span>
           <div>
-            <strong>{currentEmail ?? 'Compte local'}</strong>
+            <strong>{displayName}</strong>
+            <small>{currentEmail ?? 'Compte local'}</small>
             <small>
               {cloudRefreshing
                 ? 'Synchronisation du dressing…'

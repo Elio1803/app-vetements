@@ -11,8 +11,9 @@ describe('local account authentication', () => {
   beforeEach(() => localStorage.clear())
 
   it('creates, restores and signs out of an account', async () => {
-    const account = await createLocalAccount('Moi@Exemple.fr', 'motdepasse-solide')
+    const account = await createLocalAccount('Moi@Exemple.fr', 'motdepasse-solide', 'Mon Dressing')
     expect(account.email).toBe('moi@exemple.fr')
+    expect(account.profileName).toBe('Mon Dressing')
     expect(getLocalSession()).toEqual(account)
 
     signOutLocalAccount()
@@ -21,7 +22,7 @@ describe('local account authentication', () => {
   })
 
   it('rejects an incorrect password', async () => {
-    await createLocalAccount('moi@exemple.fr', 'motdepasse-solide')
+    await createLocalAccount('moi@exemple.fr', 'motdepasse-solide', 'Moi')
     signOutLocalAccount()
     await expect(signInLocalAccount('moi@exemple.fr', 'mauvais-mot-de-passe')).rejects.toThrow(
       'Adresse e-mail ou mot de passe incorrect.',

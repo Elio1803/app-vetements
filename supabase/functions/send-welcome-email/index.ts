@@ -51,7 +51,10 @@ export default {
       }
 
       const email = user.email.trim();
-      const displayName = email.split("@")[0] || "vous";
+      const metadataName = typeof user.user_metadata?.display_name === "string"
+        ? user.user_metadata.display_name.trim().replace(/\s+/g, " ").slice(0, 32)
+        : "";
+      const displayName = metadataName || email.split("@")[0] || "vous";
       const response = await fetch("https://api.resend.com/emails", {
         method: "POST",
         headers: {

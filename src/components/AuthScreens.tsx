@@ -2,11 +2,12 @@ import { AnimatePresence, motion, useReducedMotion } from 'framer-motion'
 import { Check, ChevronRight } from 'lucide-react'
 import { type FormEvent, useState } from 'react'
 import { TRANSITIONS } from '../lib/animations'
+import { PROFILE_NAME_MAX_LENGTH } from '../lib/profile'
 import { isGoogleAuthEnabled, isSupabaseConfigured } from '../lib/supabase-client'
 import { BrandMark } from './BrandMark'
 
 export interface LoginScreenProps {
-  onLogin: (email: string, password: string, createAccount: boolean) => Promise<string | null>
+  onLogin: (email: string, password: string, createAccount: boolean, profileName: string) => Promise<string | null>
   onGoogle: () => Promise<string | null>
   onResetPassword: (email: string) => Promise<string>
 }
@@ -16,13 +17,14 @@ export function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenP
   const [busy, setBusy] = useState(false)
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [profileName, setProfileName] = useState('')
   const [authError, setAuthError] = useState('')
 
   const submit = async (event: FormEvent) => {
     event.preventDefault()
     setBusy(true)
     setAuthError('')
-    const error = await onLogin(email, password, createAccount)
+    const error = await onLogin(email, password, createAccount, profileName)
     if (error) setAuthError(error)
     setBusy(false)
   }
@@ -66,6 +68,23 @@ export function LoginScreen({ onLogin, onGoogle, onResetPassword }: LoginScreenP
             <button role="tab" aria-selected={createAccount} className={createAccount ? 'is-active' : ''} onClick={() => setCreateAccount(true)}>Créer un compte</button>
           </div>
           <form onSubmit={submit}>
+            {createAccount && (
+              <div className="profile-name-field">
+                <label className="field-label" htmlFor="profile-name">Nom de profil</label>
+                <input
+                  className="text-field"
+                  id="profile-name"
+                  type="text"
+                  value={profileName}
+                  onChange={(event) => setProfileName(event.target.value)}
+                  placeholder="Ex. Élise"
+                  maxLength={PROFILE_NAME_MAX_LENGTH}
+                  autoComplete="name"
+                  required
+                />
+                <small>Ce nom personnalisera votre expérience dans Le Dressing.</small>
+              </div>
+            )}
             <label className="field-label" htmlFor="email">Adresse e-mail</label>
             <input className="text-field" id="email" type="email" value={email} onChange={(event) => setEmail(event.target.value)} placeholder="vous@exemple.fr" required />
             <div className="password-label-row">
