@@ -21,20 +21,26 @@ interface ChatMessage {
 
 interface HelpChatProps {
   currentView: HelpContext
+  profileName?: string
   onAction: (action: HelpAction) => void
 }
 
-const START_MESSAGE: ChatMessage = {
-  id: 'welcome',
-  role: 'assistant',
-  text: 'Bonjour ! Je suis l’assistant du Dressing. Comment puis-je vous aider à utiliser l’application ?',
+function welcomeMessage(profileName?: string): ChatMessage {
+  const name = profileName?.trim()
+  return {
+    id: 'welcome',
+    role: 'assistant',
+    text: name
+      ? `Bonjour ${name} ! Je suis l’assistant du Dressing. Comment puis-je vous aider à utiliser l’application ?`
+      : 'Bonjour ! Je suis l’assistant du Dressing. Comment puis-je vous aider à utiliser l’application ?',
+  }
 }
 
-export function HelpChat({ currentView, onAction }: HelpChatProps) {
+export function HelpChat({ currentView, profileName, onAction }: HelpChatProps) {
   const shouldReduceMotion = useReducedMotion()
   const [open, setOpen] = useState(false)
   const [question, setQuestion] = useState('')
-  const [messages, setMessages] = useState<ChatMessage[]>([START_MESSAGE])
+  const [messages, setMessages] = useState<ChatMessage[]>(() => [welcomeMessage(profileName)])
   const [thinking, setThinking] = useState(false)
   const panel = useRef<HTMLElement>(null)
   const input = useRef<HTMLInputElement>(null)
@@ -160,7 +166,7 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
     setQuestion('')
     setThinking(true)
     responseTimer.current = window.setTimeout(() => {
-      const reply = answerHelpQuestion(cleanQuestion, currentView)
+      const reply = answerHelpQuestion(cleanQuestion, currentView, profileName)
       setMessages((current) => [...current, {
         id: `assistant-${Date.now()}`,
         role: 'assistant',
@@ -184,7 +190,7 @@ export function HelpChat({ currentView, onAction }: HelpChatProps) {
     if (responseTimer.current !== null) window.clearTimeout(responseTimer.current)
     responseTimer.current = null
     setThinking(false)
-    setMessages([START_MESSAGE])
+    setMessages([welcomeMessage(profileName)])
   }
 
   const handleDialogKeyDown = (event: ReactKeyboardEvent<HTMLElement>) => {

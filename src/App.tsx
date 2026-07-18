@@ -1862,6 +1862,7 @@ function App() {
       <Suspense fallback={null}>
         <HelpChat
           currentView={view}
+          profileName={displayName}
           onAction={(action) => {
             if (action === 'add-item') {
               setAddOpen(true)

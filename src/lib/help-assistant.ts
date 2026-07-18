@@ -11,14 +11,78 @@ interface HelpIntent extends HelpReply {
   patterns: string[]
 }
 
+const STOPWORDS = new Set([
+  'le', 'la', 'les', 'l', 'un', 'une', 'des', 'de', 'du', 'et', 'ou', 'a', 'au', 'aux',
+  'ce', 'cette', 'ces', 'mon', 'ma', 'mes', 'ton', 'ta', 'tes', 'son', 'sa', 'ses',
+  'je', 'j', 'tu', 'il', 'elle', 'on', 'nous', 'vous', 'ils', 'elles', 'pour', 'avec',
+  'sur', 'dans', 'est', 'suis', 'sont', 'que', 'qui', 'quoi', 'comment', 'pourquoi',
+  'est ce', 'si', 'pas', 'plus', 'faire', 'peux', 'peut', 'svp', 'stp',
+])
+
 function normalizeQuestion(value: string): string {
   return value
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[̀-ͯ]/g, '')
     .toLocaleLowerCase('fr')
     .replace(/[^a-z0-9\s]/g, ' ')
     .replace(/\s+/g, ' ')
     .trim()
+}
+
+function tokenize(normalized: string): string[] {
+  return normalized.split(' ').filter((word) => word.length >= 2 && !STOPWORDS.has(word))
+}
+
+function levenshtein(a: string, b: string): number {
+  if (a === b) return 0
+  if (!a.length) return b.length
+  if (!b.length) return a.length
+
+  let previousRow = Array.from({ length: b.length + 1 }, (_, index) => index)
+  for (let i = 0; i < a.length; i += 1) {
+    const currentRow = [i + 1]
+    for (let j = 0; j < b.length; j += 1) {
+      const cost = a[i] === b[j] ? 0 : 1
+      currentRow.push(Math.min(
+        previousRow[j + 1] + 1,
+        currentRow[j] + 1,
+        previousRow[j] + cost,
+      ))
+    }
+    previousRow = currentRow
+  }
+  return previousRow[b.length]
+}
+
+function wordMatches(patternWord: string, questionWord: string): boolean {
+  if (patternWord === questionWord) return true
+  if (Math.abs(patternWord.length - questionWord.length) > 2) return false
+  const tolerance = patternWord.length >= 7 ? 2 : patternWord.length >= 4 ? 1 : 0
+  return tolerance > 0 && levenshtein(patternWord, questionWord) <= tolerance
+}
+
+function scorePattern(pattern: string, normalizedQuestion: string, questionTokens: string[]): number {
+  if (normalizedQuestion.includes(pattern)) {
+    return pattern.split(' ').length * 2
+  }
+
+  const patternWords = pattern.split(' ').filter((word) => word.length >= 2)
+  if (!patternWords.length) return 0
+
+  const matchedWords = patternWords.filter((patternWord) =>
+    questionTokens.some((questionWord) => wordMatches(patternWord, questionWord)),
+  )
+  const ratio = matchedWords.length / patternWords.length
+  if (ratio === 1) return patternWords.length * 1.5
+  if (ratio >= 0.6) return patternWords.length * ratio
+  return 0
+}
+
+function bestScoreForIntent(intent: HelpIntent, normalizedQuestion: string, questionTokens: string[]): number {
+  return intent.patterns.reduce(
+    (best, pattern) => Math.max(best, scorePattern(pattern, normalizedQuestion, questionTokens)),
+    0,
+  )
 }
 
 const INTENTS: HelpIntent[] = [
@@ -243,10 +307,35 @@ const INTENTS: HelpIntent[] = [
     text: 'Les fonctions actuellement présentes dans Le Dressing sont utilisables sans abonnement dans cette version. Certaines fonctions d’IA avancée pourraient plus tard nécessiter un quota clairement indiqué.',
   },
   {
-    patterns: ['bonjour', 'salut', 'hello', 'bonsoir', 'que peux tu faire', 'comment ca marche'],
-    text: 'Bonjour ! Je peux vous guider pour le compte, les photos, le détourage, le dressing, la génération, la météo, l’historique, le profil, l’installation et la synchronisation entre appareils.',
+    patterns: ['que peux tu faire', 'comment ca marche', 'a quoi tu sers', 'tes fonctionnalites'],
+    text: 'Je peux vous guider pour le compte, les photos, le détourage, le dressing, la génération de tenues, la météo, l’historique, le profil, l’installation et la synchronisation entre appareils. Posez votre question comme à un ami.',
   },
 ]
+
+const SMALL_TALK: HelpIntent[] = [
+  {
+    patterns: ['merci', 'merci beaucoup', 'top merci', 'super merci', 'nickel'],
+    text: 'Avec plaisir ! Je reste ouvert si vous avez une autre question.',
+  },
+  {
+    patterns: ['au revoir', 'a bientot', 'bye', 'a plus tard'],
+    text: 'À bientôt ! Revenez quand vous voulez, je suis toujours dans le coin.',
+  },
+  {
+    patterns: ['ca va', 'comment vas tu', 'tu vas bien'],
+    text: 'Je vais très bien, merci de demander ! Et vous, votre dressing se porte bien ?',
+  },
+  {
+    patterns: ['ok', 'd accord', 'parfait', 'super', 'nickel merci', 'compris'],
+    text: 'Parfait ! Dites-moi si une autre question se présente.',
+  },
+  {
+    patterns: ['tu es qui', 'qui es tu', 't es qui', 'es tu une intelligence artificielle', 'es tu un robot'],
+    text: 'Je suis l’assistant intégré au Dressing : je connais toutes les fonctions de l’application et je suis là pour vous guider dedans, à tout moment.',
+  },
+]
+
+const GREETINGS = ['bonjour', 'salut', 'hello', 'bonsoir', 'coucou', 'hey']
 
 const CONTEXT_FALLBACKS: Record<HelpContext, HelpReply> = {
   wardrobe: {
@@ -286,17 +375,63 @@ export function getHelpContextLabel(context: HelpContext): string {
   return ({ wardrobe: 'Dressing', generate: 'Générer', history: 'Historique', profile: 'Profil' })[context]
 }
 
-export function answerHelpQuestion(value: string, context: HelpContext = 'wardrobe'): HelpReply {
-  const question = normalizeQuestion(value)
-  const intent = INTENTS.find(({ patterns }) => patterns.some((pattern) => question.includes(pattern)))
+const CONFIDENCE_THRESHOLD = 1.4
 
-  if (intent) {
-    const { patterns: _patterns, ...reply } = intent
+export function answerHelpQuestion(value: string, context: HelpContext = 'wardrobe', profileName?: string): HelpReply {
+  const question = normalizeQuestion(value)
+  const tokens = tokenize(question)
+  const name = profileName?.trim()
+
+  if (!question) return CONTEXT_FALLBACKS[context]
+
+  if (GREETINGS.some((greeting) => question.includes(greeting) || tokens.some((token) => wordMatches(greeting, token)))) {
+    return {
+      text: name
+        ? `Bonjour ${name} ! Je peux vous guider pour le compte, les photos, le dressing, la génération de tenues, la météo, l’historique ou la synchronisation. Que puis-je faire pour vous ?`
+        : 'Bonjour ! Je peux vous guider pour le compte, les photos, le détourage, le dressing, la génération, la météo, l’historique, le profil, l’installation et la synchronisation entre appareils.',
+    }
+  }
+
+  for (const smallTalk of SMALL_TALK) {
+    if (bestScoreForIntent(smallTalk, question, tokens) >= CONFIDENCE_THRESHOLD) {
+      const { patterns: _patterns, ...reply } = smallTalk
+      return reply
+    }
+  }
+
+  let bestIntent: HelpIntent | null = null
+  let bestScore = 0
+  let secondBestIntent: HelpIntent | null = null
+
+  for (const intent of INTENTS) {
+    const score = bestScoreForIntent(intent, question, tokens)
+    if (score > bestScore) {
+      secondBestIntent = bestIntent
+      bestScore = score
+      bestIntent = intent
+    } else if (score > 0 && score === bestScore && !bestIntent) {
+      bestIntent = intent
+    }
+  }
+
+  if (bestIntent && bestScore >= CONFIDENCE_THRESHOLD) {
+    const { patterns: _patterns, ...reply } = bestIntent
     return reply
   }
 
-  if (!question || ['aide', 'je suis perdu', 'je ne comprends pas', 'quoi faire ici'].some((pattern) => question.includes(pattern))) {
+  if (['aide', 'je suis perdu', 'je ne comprends pas', 'quoi faire ici'].some((pattern) => question.includes(pattern))) {
     return CONTEXT_FALLBACKS[context]
+  }
+
+  if (bestIntent && bestScore > 0) {
+    const hint = secondBestIntent && secondBestIntent !== bestIntent
+      ? ` Ou peut-être plutôt : « ${secondBestIntent.text.split('.')[0]} » ?`
+      : ''
+    return {
+      text: `Je ne suis pas totalement certain de comprendre, mais vous parlez peut-être de ceci : ${bestIntent.text}${hint}`,
+      action: bestIntent.action,
+      actionLabel: bestIntent.actionLabel,
+    }
   }
 
   return {

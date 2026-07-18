@@ -41,4 +41,19 @@ describe('help assistant', () => {
     expect(getHelpSuggestions('wardrobe')).not.toEqual(getHelpSuggestions('profile'))
     expect(getHelpSuggestions('generate')).toContain('Utiliser la météo')
   })
+
+  it('tolerates small typos in the question', () => {
+    expect(answerHelpQuestion('Comment ajouuter un vetement ?').action).toBe('add-item')
+    expect(answerHelpQuestion('Commnet synchronizer mon compte ?').action).toBe('profile')
+  })
+
+  it('replies to small talk without a generic fallback', () => {
+    expect(answerHelpQuestion('Merci beaucoup !').text).toContain('plaisir')
+    expect(answerHelpQuestion('Au revoir').text).toContain('bientôt')
+  })
+
+  it('personalizes the greeting with the profile name', () => {
+    expect(answerHelpQuestion('Bonjour', 'wardrobe', 'Elio').text).toContain('Elio')
+    expect(answerHelpQuestion('Bonjour', 'wardrobe').text).not.toContain('undefined')
+  })
 })
