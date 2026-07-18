@@ -1863,6 +1863,7 @@ function App() {
         <HelpChat
           currentView={view}
           profileName={displayName}
+          isOnline={isOnline}
           onAction={(action) => {
             if (action === 'add-item') {
               setAddOpen(true)

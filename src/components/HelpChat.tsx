@@ -10,6 +10,7 @@ import {
   type HelpAction,
   type HelpContext,
 } from '../lib/help-assistant'
+import { askHelpAssistant, isSupabaseConfigured, type HelpChatTurn } from '../lib/supabase-client'
 
 interface ChatMessage {
   id: string
@@ -22,6 +23,7 @@ interface ChatMessage {
 interface HelpChatProps {
   currentView: HelpContext
   profileName?: string
+  isOnline: boolean
   onAction: (action: HelpAction) => void
 }
 
@@ -36,7 +38,7 @@ function welcomeMessage(profileName?: string): ChatMessage {
   }
 }
 
-export function HelpChat({ currentView, profileName, onAction }: HelpChatProps) {
+export function HelpChat({ currentView, profileName, isOnline, onAction }: HelpChatProps) {
   const shouldReduceMotion = useReducedMotion()
   const [open, setOpen] = useState(false)
   const [question, setQuestion] = useState('')
@@ -157,15 +159,21 @@ export function HelpChat({ currentView, profileName, onAction }: HelpChatProps) 
   const ask = (value: string) => {
     const cleanQuestion = value.trim()
     if (!cleanQuestion || thinking) return
-    const userMessage: ChatMessage = {
+
+    const historyForRequest: HelpChatTurn[] = messages
+      .filter((message) => message.id !== 'welcome')
+      .slice(-8)
+      .map((message) => ({ role: message.role, text: message.text }))
+
+    setMessages((current) => [...current, {
       id: `user-${Date.now()}`,
       role: 'user',
       text: cleanQuestion,
-    }
-    setMessages((current) => [...current, userMessage])
+    }])
     setQuestion('')
     setThinking(true)
-    responseTimer.current = window.setTimeout(() => {
+
+    const respondLocally = () => {
       const reply = answerHelpQuestion(cleanQuestion, currentView, profileName)
       setMessages((current) => [...current, {
         id: `assistant-${Date.now()}`,
@@ -173,7 +181,28 @@ export function HelpChat({ currentView, profileName, onAction }: HelpChatProps) 
         ...reply,
       }])
       setThinking(false)
-    }, shouldReduceMotion ? 0 : 320)
+    }
+
+    if (isSupabaseConfigured && isOnline) {
+      responseTimer.current = window.setTimeout(() => {
+        askHelpAssistant({
+          question: cleanQuestion,
+          context: currentView,
+          history: historyForRequest,
+          profileName,
+        }).then((reply) => {
+          setMessages((current) => [...current, {
+            id: `assistant-${Date.now()}`,
+            role: 'assistant',
+            ...reply,
+          }])
+          setThinking(false)
+        }).catch(respondLocally)
+      }, shouldReduceMotion ? 0 : 200)
+      return
+    }
+
+    responseTimer.current = window.setTimeout(respondLocally, shouldReduceMotion ? 0 : 320)
   }
 
   const submit = (event: FormEvent) => {
