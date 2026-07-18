@@ -3,7 +3,6 @@ import type { ClothingCategory, ClothingItem } from '../types'
 import { wardrobeApi } from './wardrobe-api'
 import { wardrobeStore } from './wardrobe-store'
 import { normalizeClothingItem } from './storage'
-import type { HelpAction, HelpContext, HelpReply } from './help-assistant'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
@@ -159,42 +158,4 @@ export async function sendWelcomeEmail(): Promise<void> {
   if (!supabase) return
   const { error } = await supabase.functions.invoke('send-welcome-email', { body: {} })
   if (error) throw error
-}
-
-export interface HelpChatTurn {
-  role: 'user' | 'assistant'
-  text: string
-}
-
-export async function askHelpAssistant(input: {
-  question: string
-  context: HelpContext
-  history: HelpChatTurn[]
-  profileName?: string
-}): Promise<HelpReply> {
-  if (!supabase) throw new Error('Supabase n’est pas configuré.')
-
-  const { data, error } = await supabase.functions.invoke<{
-    text: unknown
-    action: unknown
-    actionLabel: unknown
-  }>('help-chat', {
-    body: {
-      question: input.question,
-      context: input.context,
-      history: input.history,
-      profileName: input.profileName,
-    },
-  })
-
-  if (error) throw error
-  if (!data || typeof data.text !== 'string') {
-    throw new Error('Réponse de l’assistant invalide.')
-  }
-
-  return {
-    text: data.text,
-    action: typeof data.action === 'string' ? (data.action as HelpAction) : undefined,
-    actionLabel: typeof data.actionLabel === 'string' ? data.actionLabel : undefined,
-  }
 }

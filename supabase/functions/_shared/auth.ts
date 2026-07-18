@@ -10,7 +10,7 @@ export interface AuthenticatedContext {
   user: User;
 }
 
-export type AiQuotaAction = "analyze_clothing" | "generate_outfits" | "help_chat";
+export type AiQuotaAction = "analyze_clothing" | "generate_outfits";
 export type ApiRateLimitAction =
   | "remove_background"
   | "analyze_clothing"
@@ -18,8 +18,7 @@ export type ApiRateLimitAction =
   | "compose_outfit"
   | "sync_clothing_item"
   | "list_clothing_items"
-  | "send_welcome_email"
-  | "help_chat";
+  | "send_welcome_email";
 
 function requiredEnvironmentValue(name: string): string {
   const value = Deno.env.get(name)?.trim();

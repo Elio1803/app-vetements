@@ -17,8 +17,6 @@ interface AnthropicJsonRequest<T> {
   content: AnthropicContentBlock[];
   maxTokens: number;
   validate: (value: unknown) => T;
-  /** Overrides the ANTHROPIC_MODEL secret, e.g. for a cheaper model on lightweight calls. */
-  model?: string;
 }
 
 interface MessagesResponse {
@@ -75,7 +73,7 @@ export async function callAnthropicJson<T>(
   options: AnthropicJsonRequest<T>,
 ): Promise<T> {
   const apiKey = requiredSecret("ANTHROPIC_API_KEY");
-  const model = options.model?.trim() || requiredSecret("ANTHROPIC_MODEL");
+  const model = requiredSecret("ANTHROPIC_MODEL");
   let lastFailure: unknown;
 
   // At most two API calls: the single retry required by the product spec.
