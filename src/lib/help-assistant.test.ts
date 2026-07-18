@@ -56,4 +56,15 @@ describe('help assistant', () => {
     expect(answerHelpQuestion('Bonjour', 'wardrobe', 'Elio').text).toContain('Elio')
     expect(answerHelpQuestion('Bonjour', 'wardrobe').text).not.toContain('undefined')
   })
+
+  it.each<[string, HelpAction]>([
+    ['Comment publier un article ?', 'add-item'],
+    ['Comment uploader une fringue ?', 'add-item'],
+    ['Comment virer un habit du dressing ?', 'wardrobe'],
+    ['Je veux corriger le nom d’une pièce', 'wardrobe'],
+    ['Comment trouver mes vestes ?', 'wardrobe'],
+    ['Peux-tu me suggérer une tenue ?', 'generate'],
+  ])('understands the synonym in “%s”', (question, action) => {
+    expect(answerHelpQuestion(question).action).toBe(action)
+  })
 })

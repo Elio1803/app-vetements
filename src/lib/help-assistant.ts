@@ -19,6 +19,40 @@ const STOPWORDS = new Set([
   'est ce', 'si', 'pas', 'plus', 'faire', 'peux', 'peut', 'svp', 'stp',
 ])
 
+// Maps a much wider vocabulary onto the canonical words actually used by the
+// INTENTS patterns below, so a synonym the patterns never anticipated still
+// resolves to the right intent (e.g. "publier un article" -> "ajouter un vetement").
+const WORD_SYNONYMS: Record<string, string> = {
+  publier: 'ajouter', poster: 'ajouter', afficher: 'ajouter', uploader: 'ajouter',
+  upload: 'ajouter', importer: 'ajouter', scanner: 'ajouter', charger: 'ajouter',
+  mettre: 'ajouter', enregistrer: 'ajouter', integrer: 'ajouter', inserer: 'ajouter',
+  rajouter: 'ajouter', insere: 'ajouter',
+
+  article: 'vetement', fringue: 'vetement', fringues: 'vetement', habit: 'vetement',
+  habits: 'vetement', sape: 'vetement', sapes: 'vetement', textile: 'vetement',
+  produit: 'vetement', vetements: 'vetement', item: 'piece', objet: 'piece',
+
+  enlever: 'supprimer', virer: 'supprimer', effacer: 'supprimer', retirer: 'supprimer',
+  jeter: 'supprimer', degager: 'supprimer',
+
+  editer: 'modifier', corriger: 'modifier', renommer: 'modifier', ajuster: 'modifier',
+
+  chercher: 'rechercher', trouver: 'rechercher', filtrer: 'rechercher', localiser: 'rechercher',
+
+  proposer: 'generer', suggerer: 'generer', composer: 'generer', creer: 'generer',
+  inventer: 'generer', imaginer: 'generer',
+
+  bug: 'erreur', souci: 'erreur', plante: 'erreur', probleme: 'erreur', pepin: 'erreur',
+  bloque: 'erreur', bloquee: 'erreur', casse: 'erreur', marche: 'erreur',
+  fonctionne: 'erreur',
+
+  ami: 'assistant', copain: 'assistant', pote: 'assistant', bot: 'assistant', robot: 'assistant',
+}
+
+function canonicalizeWord(word: string): string {
+  return WORD_SYNONYMS[word] ?? word
+}
+
 function normalizeQuestion(value: string): string {
   return value
     .normalize('NFD')
@@ -30,7 +64,10 @@ function normalizeQuestion(value: string): string {
 }
 
 function tokenize(normalized: string): string[] {
-  return normalized.split(' ').filter((word) => word.length >= 2 && !STOPWORDS.has(word))
+  return normalized
+    .split(' ')
+    .filter((word) => word.length >= 2 && !STOPWORDS.has(word))
+    .map(canonicalizeWord)
 }
 
 function levenshtein(a: string, b: string): number {
