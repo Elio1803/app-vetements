@@ -91,7 +91,7 @@ import {
   WARDROBE_STORAGE_KEY,
   wardrobeStorageKeyForAccount,
 } from './lib/storage'
-import { createProductPhoto, defaultFocusForCategory, focusPhotoOnCategory, type GarmentFocus } from './lib/product-photo'
+import { createProductPhoto } from './lib/product-photo'
 import { weatherConditionLabel } from './lib/weather'
 import {
   createRemoveBgProductPhoto,
@@ -129,35 +129,6 @@ const OutfitBoard = lazy(loadOutfitBoard)
 const HelpChat = lazy(loadHelpChat)
 
 const PASSWORD_RECOVERY_KEY = 'le-dressing:password-recovery'
-
-const GARMENT_FOCUS_OPTIONS: Record<ClothingCategory, Array<{ value: GarmentFocus; label: string }>> = {
-  haut: [
-    { value: 'crop_top', label: 'Crop top' },
-    { value: 'top_short', label: 'T-shirt' },
-    { value: 'shirt', label: 'Chemise' },
-    { value: 'top_long', label: 'Pull long' },
-    { value: 'hoodie', label: 'Hoodie' },
-  ],
-  bas: [
-    { value: 'shorts', label: 'Short' },
-    { value: 'skirt', label: 'Jupe' },
-    { value: 'pants_cropped', label: 'Pantacourt' },
-    { value: 'pants_full', label: 'Pantalon long' },
-  ],
-  chaussures: [{ value: 'shoes', label: 'Chaussures' }],
-  veste_manteau: [
-    { value: 'jacket_short', label: 'Veste courte' },
-    { value: 'coat_long', label: 'Manteau long' },
-  ],
-  accessoire: [
-    { value: 'bag', label: 'Sac' },
-    { value: 'jewelry', label: 'Bijou / lunettes' },
-  ],
-  robe: [
-    { value: 'dress_short', label: 'Robe courte' },
-    { value: 'dress_long', label: 'Robe longue' },
-  ],
-}
 
 const UPLOAD_PROGRESS_MESSAGES = [
   'Analyse de l’image…',
@@ -436,7 +407,6 @@ function App() {
   const [editName, setEditName] = useState('')
   const [editCategory, setEditCategory] = useState<ClothingCategory>('haut')
   const [addCategory, setAddCategory] = useState<ClothingCategory>('haut')
-  const [addFocus, setAddFocus] = useState<GarmentFocus>('top_short')
   const [addName, setAddName] = useState('')
   const [photoData, setPhotoData] = useState('')
   const [photoBusy, setPhotoBusy] = useState(false)
@@ -820,11 +790,10 @@ function App() {
     setPhotoBusy(true)
     setAddError('')
     try {
-      const focusedFile = await focusPhotoOnCategory(file, addFocus)
       let preparedPhoto = ''
       if (isOnline && supabase && currentUserId) {
         try {
-          preparedPhoto = await createRemoveBgProductPhoto(focusedFile)
+          preparedPhoto = await createRemoveBgProductPhoto(file)
         } catch {
           showToast('remove.bg indisponible : détourage gratuit utilisé.')
         }
@@ -832,9 +801,9 @@ function App() {
 
       if (!preparedPhoto) {
         try {
-          preparedPhoto = await createProductPhoto(focusedFile)
+          preparedPhoto = await createProductPhoto(file)
         } catch {
-          preparedPhoto = await compressPhoto(focusedFile)
+          preparedPhoto = await compressPhoto(file)
           showToast('Détourage indisponible : photo optimisée sans suppression du fond.')
         }
       }
@@ -873,7 +842,6 @@ function App() {
 
   const changeAddCategory = (category: ClothingCategory) => {
     setAddCategory(category)
-    setAddFocus(defaultFocusForCategory(category))
     setAddError('')
     if (photoData) {
       setPhotoData('')
@@ -881,20 +849,10 @@ function App() {
     }
   }
 
-  const changeAddFocus = (focus: GarmentFocus) => {
-    setAddFocus(focus)
-    setAddError('')
-    if (photoData) {
-      setPhotoData('')
-      showToast('Cadrage changé : ajoutez à nouveau la photo pour appliquer le bon zoom.')
-    }
-  }
-
   const resetAdd = () => {
     setPhotoData('')
     setAddName('')
     setAddCategory('haut')
-    setAddFocus('top_short')
     setAddError('')
   }
 
@@ -903,7 +861,6 @@ function App() {
 
     resetAdd()
     setAddCategory(neededCategory)
-    setAddFocus(defaultFocusForCategory(neededCategory))
     setAddOpen(true)
   }
 
@@ -1949,20 +1906,7 @@ function App() {
           </div>
         </fieldset>
 
-        <fieldset className="category-picker crop-picker">
-          <legend>Quel cadrage ?</legend>
-          <div>
-            {GARMENT_FOCUS_OPTIONS[addCategory].map((option) => (
-              <label className={addFocus === option.value ? 'is-active' : ''} key={option.value}>
-                <input type="radio" name="add-focus" checked={addFocus === option.value} onChange={() => changeAddFocus(option.value)} />
-                {option.label}
-                {addFocus === option.value && <Check size={14} />}
-              </label>
-            ))}
-          </div>
-        </fieldset>
-
-        <div className="photo-advice"><Camera size={17} /><p>Choisissez la catégorie avant la photo : l’app cible cette zone et évite de garder toute la tenue.</p></div>
+        <div className="photo-advice"><Camera size={17} /><p>Photographiez la pièce seule, bien à plat ou sur un cintre, sur un fond uni : le détourage isole automatiquement le vêtement et le recentre sur fond blanc.</p></div>
         {!isOnline && (
           <div className="upload-status upload-status--offline" role="status">
             <Zap size={16} />

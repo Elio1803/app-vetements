@@ -88,13 +88,13 @@ const INTENTS: HelpIntent[] = [
   },
   {
     patterns: ['plusieurs vetements', 'tenue complete', 'isoler le haut', 'isoler le bas', 'garder que', 'un seul vetement'],
-    text: 'Choisissez la catégorie avant d’importer la photo : Haut, Bas, Chaussures, Veste, Accessoire ou Robe. L’application cible alors la zone correspondante. Pour un résultat parfait, utilisez si possible une photo contenant une seule pièce.',
+    text: 'Photographiez une seule pièce à la fois, posée à plat ou sur un cintre. Le détourage automatique isole le vêtement et le recentre sur fond blanc, quel que soit le cadrage de la photo.',
     action: 'add-item',
     actionLabel: 'Choisir une catégorie',
   },
   {
     patterns: ['detourage', 'detourer', 'fond blanc', 'remove bg', 'arriere plan', 'decoupage'],
-    text: 'Pour un détourage précis, photographiez une seule pièce entièrement visible, sur un fond uni contrasté, avec une lumière homogène. Évitez les mains devant le vêtement et choisissez la catégorie avant la photo.',
+    text: 'Pour un détourage précis, photographiez une seule pièce entièrement visible, sur un fond uni contrasté, avec une lumière homogène. Évitez les mains devant le vêtement.',
     action: 'add-item',
     actionLabel: 'Ajouter une meilleure photo',
   },
@@ -106,7 +106,7 @@ const INTENTS: HelpIntent[] = [
   },
   {
     patterns: ['categorie', 'haut ou bas', 'type de vetement', 'mauvaise categorie'],
-    text: 'La catégorie sert au cadrage et à la génération des tenues. Choisissez celle qui décrit la pièce principale. Une combinaison entière peut être classée dans « Robe » ; un blazer dans « Veste / manteau ».',
+    text: 'La catégorie sert à la génération des tenues. Choisissez celle qui décrit la pièce principale. Une combinaison entière peut être classée dans « Robe » ; un blazer dans « Veste / manteau ».',
     action: 'add-item',
     actionLabel: 'Choisir la catégorie',
   },
