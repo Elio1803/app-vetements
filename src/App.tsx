@@ -91,7 +91,7 @@ import {
   WARDROBE_STORAGE_KEY,
   wardrobeStorageKeyForAccount,
 } from './lib/storage'
-import { createProductPhoto } from './lib/photo-cutout'
+import { createProductPhoto, normalizePhotoForUpload } from './lib/photo-cutout'
 import { weatherConditionLabel } from './lib/weather'
 import {
   createRemoveBgProductPhoto,
@@ -790,20 +790,22 @@ function App() {
     setPhotoBusy(true)
     setAddError('')
     try {
+      const normalizedFile = await normalizePhotoForUpload(file)
       let preparedPhoto = ''
       if (isOnline && supabase && currentUserId) {
         try {
-          preparedPhoto = await createRemoveBgProductPhoto(file)
-        } catch {
+          preparedPhoto = await createRemoveBgProductPhoto(normalizedFile)
+        } catch (error) {
+          console.error('remove.bg indisponible, repli sur le détourage local :', error)
           showToast('remove.bg indisponible : détourage gratuit utilisé.')
         }
       }
 
       if (!preparedPhoto) {
         try {
-          preparedPhoto = await createProductPhoto(file)
+          preparedPhoto = await createProductPhoto(normalizedFile)
         } catch {
-          preparedPhoto = await compressPhoto(file)
+          preparedPhoto = await compressPhoto(normalizedFile)
           showToast('Détourage indisponible : photo optimisée sans suppression du fond.')
         }
       }
