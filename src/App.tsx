@@ -804,7 +804,8 @@ function App() {
       if (!preparedPhoto) {
         try {
           preparedPhoto = await createProductPhoto(normalizedFile)
-        } catch {
+        } catch (error) {
+          console.error('Détourage local indisponible, repli sur la compression simple :', error)
           preparedPhoto = await compressPhoto(normalizedFile)
           showToast('Détourage indisponible : photo optimisée sans suppression du fond.')
         }
