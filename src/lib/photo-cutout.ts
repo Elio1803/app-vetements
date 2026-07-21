@@ -102,7 +102,7 @@ export async function normalizePhotoForUpload(file: File): Promise<File> {
 export async function removeBackgroundLocally(file: File): Promise<ImageBitmap> {
   const { removeBackground } = await import('@imgly/background-removal')
   const cutout = await removeBackground(file, {
-    model: 'isnet_fp16',
+    model: 'isnet_quint8',
     device: 'cpu',
     output: { format: 'image/png', quality: 1 },
   })
