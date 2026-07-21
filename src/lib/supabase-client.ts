@@ -3,6 +3,7 @@ import type { ClothingCategory, ClothingItem } from '../types'
 import { wardrobeApi } from './wardrobe-api'
 import { wardrobeStore } from './wardrobe-store'
 import { normalizeClothingItem } from './storage'
+import { composeProductPhoto } from './photo-cutout'
 
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL?.trim()
 const supabaseAnonKey = import.meta.env.VITE_SUPABASE_ANON_KEY?.trim()
@@ -151,7 +152,11 @@ export async function createRemoveBgProductPhoto(file: File): Promise<string> {
   })
   if (error) throw error
   if (!data?.imageDataUrl) throw new Error('Photo remove.bg indisponible.')
-  return data.imageDataUrl
+
+  const response = await fetch(data.imageDataUrl)
+  const blob = await response.blob()
+  const bitmap = await createImageBitmap(blob)
+  return composeProductPhoto(bitmap)
 }
 
 export async function sendWelcomeEmail(): Promise<void> {
