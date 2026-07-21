@@ -91,7 +91,7 @@ import {
   WARDROBE_STORAGE_KEY,
   wardrobeStorageKeyForAccount,
 } from './lib/storage'
-import { createProductPhoto } from './lib/product-photo'
+import { createProductPhoto } from './lib/photo-cutout'
 import { weatherConditionLabel } from './lib/weather'
 import {
   createRemoveBgProductPhoto,

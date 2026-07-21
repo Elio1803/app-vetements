@@ -65,3 +65,78 @@ export function softenCutoutEdges(pixels: Uint8ClampedArray): void {
     }
   }
 }
+
+const OUTPUT_WIDTH = 900
+const OUTPUT_HEIGHT = 1125
+const MAX_FILL_RATIO = 0.82
+const MAX_UPLOAD_DIMENSION = 2200
+const NORMALIZED_JPEG_QUALITY = 0.9
+
+export async function normalizePhotoForUpload(file: File): Promise<File> {
+  const bitmap = await createImageBitmap(file)
+  const { width, height } = computeNormalizedDimensions(bitmap.width, bitmap.height, MAX_UPLOAD_DIMENSION)
+
+  const canvas = document.createElement('canvas')
+  canvas.width = width
+  canvas.height = height
+  const context = canvas.getContext('2d')
+  if (!context) throw new Error('Le traitement de la photo est indisponible sur cet appareil.')
+  context.drawImage(bitmap, 0, 0, width, height)
+  bitmap.close()
+
+  const blob = await new Promise<Blob | null>((resolve) =>
+    canvas.toBlob(resolve, 'image/jpeg', NORMALIZED_JPEG_QUALITY),
+  )
+  if (!blob) throw new Error('La photo n’a pas pu être préparée.')
+  return new File([blob], file.name || 'vetement.jpg', { type: 'image/jpeg' })
+}
+
+export async function removeBackgroundLocally(file: File): Promise<ImageBitmap> {
+  const { removeBackground } = await import('@imgly/background-removal')
+  const cutout = await removeBackground(file, {
+    model: 'isnet_quint8',
+    device: 'cpu',
+    output: { format: 'image/png', quality: 1 },
+  })
+  return createImageBitmap(cutout)
+}
+
+export async function composeProductPhoto(bitmap: ImageBitmap): Promise<string> {
+  const source = document.createElement('canvas')
+  source.width = bitmap.width
+  source.height = bitmap.height
+  const sourceContext = source.getContext('2d', { willReadFrequently: true })
+  if (!sourceContext) throw new Error('Le détourage est indisponible sur cet appareil.')
+  sourceContext.drawImage(bitmap, 0, 0)
+
+  const image = sourceContext.getImageData(0, 0, bitmap.width, bitmap.height)
+  softenCutoutEdges(image.data)
+  sourceContext.putImageData(image, 0, 0)
+  const bounds = findVisibleBounds(image.data, bitmap.width, bitmap.height)
+
+  const output = document.createElement('canvas')
+  output.width = OUTPUT_WIDTH
+  output.height = OUTPUT_HEIGHT
+  const context = output.getContext('2d')
+  if (!context) throw new Error('La photo produit ne peut pas être créée.')
+  context.fillStyle = '#FFFFFF'
+  context.fillRect(0, 0, OUTPUT_WIDTH, OUTPUT_HEIGHT)
+
+  const maximumWidth = OUTPUT_WIDTH * MAX_FILL_RATIO
+  const maximumHeight = OUTPUT_HEIGHT * MAX_FILL_RATIO
+  const scale = Math.min(maximumWidth / bounds.width, maximumHeight / bounds.height)
+  const width = bounds.width * scale
+  const height = bounds.height * scale
+  const x = (OUTPUT_WIDTH - width) / 2
+  const y = (OUTPUT_HEIGHT - height) / 2
+
+  context.drawImage(source, bounds.x, bounds.y, bounds.width, bounds.height, x, y, width, height)
+  bitmap.close()
+
+  return output.toDataURL('image/webp', 0.86)
+}
+
+export async function createProductPhoto(file: File): Promise<string> {
+  const bitmap = await removeBackgroundLocally(file)
+  return composeProductPhoto(bitmap)
+}
