@@ -13,6 +13,12 @@ import {
 
 const REMOVE_BG_ENDPOINT = "https://api.remove.bg/v1.0/removebg";
 const MAX_IMAGE_BYTES = 12 * 1024 * 1024;
+// remove.bg now returns PNG-with-alpha (format=png) instead of a flattened
+// JPEG, which can be meaningfully larger at the same resolution. Validate
+// the returned blob against its own, more generous ceiling so legitimate
+// cutouts don't trip the input-upload cap and silently fall back to the
+// local model.
+const MAX_RESULT_BYTES = 20 * 1024 * 1024;
 
 function requiredRemoveBgKey(): string {
   const value = Deno.env.get("REMOVE_BG_API_KEY")?.trim();
@@ -51,11 +57,7 @@ async function removeBackgroundWithRemoveBg(image: File): Promise<Blob> {
   const formData = new FormData();
   formData.append("image_file", image, image.name || "clothing.jpg");
   formData.append("size", "auto");
-  formData.append("format", "jpg");
-  formData.append("bg_color", "FFFFFF");
-  formData.append("crop", "true");
-  formData.append("crop_margin", "8%");
-  formData.append("position", "center");
+  formData.append("format", "png");
 
   const response = await fetch(REMOVE_BG_ENDPOINT, {
     method: "POST",
@@ -77,9 +79,9 @@ async function removeBackgroundWithRemoveBg(image: File): Promise<Blob> {
   const result = await response.blob();
   const mediaType = await validateUploadedImage(
     new File([result], "remove-bg-result", { type: result.type }),
-    MAX_IMAGE_BYTES,
+    MAX_RESULT_BYTES,
   );
-  if (mediaType !== "image/jpeg") {
+  if (mediaType !== "image/png") {
     throw new HttpError(502, "REMOVE_BG_INVALID_IMAGE", "remove.bg returned an invalid image.");
   }
   return result;
@@ -95,7 +97,7 @@ async function blobAsDataUrl(blob: Blob): Promise<string> {
     binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
   }
 
-  return `data:image/jpeg;base64,${btoa(binary)}`;
+  return `data:image/png;base64,${btoa(binary)}`;
 }
 
 export default {
