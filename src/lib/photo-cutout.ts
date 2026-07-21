@@ -73,22 +73,30 @@ const MAX_UPLOAD_DIMENSION = 2200
 const NORMALIZED_JPEG_QUALITY = 0.9
 
 export async function normalizePhotoForUpload(file: File): Promise<File> {
-  const bitmap = await createImageBitmap(file)
-  const { width, height } = computeNormalizedDimensions(bitmap.width, bitmap.height, MAX_UPLOAD_DIMENSION)
+  try {
+    const bitmap = await createImageBitmap(file)
+    const { width, height } = computeNormalizedDimensions(bitmap.width, bitmap.height, MAX_UPLOAD_DIMENSION)
 
-  const canvas = document.createElement('canvas')
-  canvas.width = width
-  canvas.height = height
-  const context = canvas.getContext('2d')
-  if (!context) throw new Error('Le traitement de la photo est indisponible sur cet appareil.')
-  context.drawImage(bitmap, 0, 0, width, height)
-  bitmap.close()
+    const canvas = document.createElement('canvas')
+    canvas.width = width
+    canvas.height = height
+    const context = canvas.getContext('2d')
+    if (!context) throw new Error('Le traitement de la photo est indisponible sur cet appareil.')
+    context.drawImage(bitmap, 0, 0, width, height)
+    bitmap.close()
 
-  const blob = await new Promise<Blob | null>((resolve) =>
-    canvas.toBlob(resolve, 'image/jpeg', NORMALIZED_JPEG_QUALITY),
-  )
-  if (!blob) throw new Error('La photo n’a pas pu être préparée.')
-  return new File([blob], file.name || 'vetement.jpg', { type: 'image/jpeg' })
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob(resolve, 'image/jpeg', NORMALIZED_JPEG_QUALITY),
+    )
+    if (!blob) throw new Error('La photo n’a pas pu être préparée.')
+    return new File([blob], file.name || 'vetement.jpg', { type: 'image/jpeg' })
+  } catch {
+    // If the browser can't decode/process this file client-side (e.g. an
+    // unusual source format), fall back to the original file unchanged so
+    // whichever pipeline runs next (remove.bg server-side, local model, ...)
+    // still gets a chance to handle it, instead of failing the whole flow.
+    return file
+  }
 }
 
 export async function removeBackgroundLocally(file: File): Promise<ImageBitmap> {
