@@ -51,11 +51,7 @@ async function removeBackgroundWithRemoveBg(image: File): Promise<Blob> {
   const formData = new FormData();
   formData.append("image_file", image, image.name || "clothing.jpg");
   formData.append("size", "auto");
-  formData.append("format", "jpg");
-  formData.append("bg_color", "FFFFFF");
-  formData.append("crop", "true");
-  formData.append("crop_margin", "8%");
-  formData.append("position", "center");
+  formData.append("format", "png");
 
   const response = await fetch(REMOVE_BG_ENDPOINT, {
     method: "POST",
@@ -79,7 +75,7 @@ async function removeBackgroundWithRemoveBg(image: File): Promise<Blob> {
     new File([result], "remove-bg-result", { type: result.type }),
     MAX_IMAGE_BYTES,
   );
-  if (mediaType !== "image/jpeg") {
+  if (mediaType !== "image/png") {
     throw new HttpError(502, "REMOVE_BG_INVALID_IMAGE", "remove.bg returned an invalid image.");
   }
   return result;
@@ -95,7 +91,7 @@ async function blobAsDataUrl(blob: Blob): Promise<string> {
     binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
   }
 
-  return `data:image/jpeg;base64,${btoa(binary)}`;
+  return `data:image/png;base64,${btoa(binary)}`;
 }
 
 export default {
