@@ -105,6 +105,7 @@ export async function removeBackgroundLocally(file: File): Promise<ImageBitmap> 
     model: 'isnet_quint8',
     device: 'cpu',
     output: { format: 'image/png', quality: 1 },
+    publicPath: new URL('bg-removal/', document.baseURI).toString(),
   })
   return createImageBitmap(cutout)
 }
