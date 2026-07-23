@@ -113,7 +113,10 @@ export function removeDetachedFragments(
 
   if (areas.length <= 1) return
 
-  const largestArea = Math.max(...areas)
+  let largestArea = 0
+  for (const area of areas) {
+    if (area > largestArea) largestArea = area
+  }
   const minArea = largestArea * minRelativeArea
 
   for (let index = 0; index < width * height; index++) {
