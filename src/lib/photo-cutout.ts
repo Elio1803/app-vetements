@@ -182,6 +182,7 @@ export async function composeProductPhoto(bitmap: ImageBitmap): Promise<string> 
 
   const image = sourceContext.getImageData(0, 0, bitmap.width, bitmap.height)
   softenCutoutEdges(image.data)
+  removeDetachedFragments(image.data, bitmap.width, bitmap.height)
   sourceContext.putImageData(image, 0, 0)
   const bounds = findVisibleBounds(image.data, bitmap.width, bitmap.height)
 
