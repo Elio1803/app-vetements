@@ -37,7 +37,7 @@ morceau de pied isolé en bas à droite de l'image).
 
 Nouvelle fonction pure dans `src/lib/photo-cutout.ts` :
 
-- `removeDetachedFragments(pixels: Uint8ClampedArray, width: number, height: number, options?: { minRelativeArea?: number }): void`
+- `removeDetachedFragments(pixels: Uint8ClampedArray, width: number, height: number, minRelativeArea?: number): void`
   - Étiquette les composantes connexes de pixels opaques (alpha strictement
     supérieur à `BOUNDS_ALPHA_THRESHOLD`, la même constante déjà utilisée par
     `findVisibleBounds`, pour une notion de « visible » cohérente entre les
