@@ -2963,10 +2963,11 @@ select {
   right: 24px;
   bottom: 24px;
   display: flex;
+  flex-wrap: wrap;
   min-height: 48px;
   align-items: center;
   gap: 9px;
-  padding: 0 16px;
+  padding: 10px 16px;
   border: 1px solid rgba(255,255,255,.12);
   border-radius: 10px;
   background: #292823;
@@ -2975,6 +2976,19 @@ select {
   font-size: .69rem;
   font-weight: 600;
   animation: toast-in 180ms ease-out;
+}
+
+.toast-detail-action {
+  margin-left: auto;
+  padding: 5px 10px;
+  border: 1px solid rgba(255,255,255,.25);
+  border-radius: 6px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
 }
 
 @keyframes toast-in { from { transform: translateY(10px); opacity: 0; } }

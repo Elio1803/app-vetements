@@ -422,6 +422,7 @@ function App() {
   const [generating, setGenerating] = useState(false)
   const [wearCandidate, setWearCandidate] = useState<OutfitSuggestion | null>(null)
   const [toast, setToast] = useState('')
+  const [toastDetail, setToastDetail] = useState('')
   const toastTimer = useRef<number | null>(null)
   const [appEntering, setAppEntering] = useState(false)
   const isOnline = useOnlineStatus()
@@ -719,13 +720,23 @@ function App() {
   )
   const localOnlyCount = state.items.filter((item) => isLocalPhotoUrl(item.photoUrl)).length
 
-  const showToast = (message: string) => {
+  const showToast = (message: string, detail?: string) => {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
     setToast(message)
+    setToastDetail(detail ?? '')
     toastTimer.current = window.setTimeout(() => {
       setToast('')
+      setToastDetail('')
       toastTimer.current = null
-    }, 3200)
+    }, detail ? 8000 : 3200)
+  }
+
+  const copyToastDetail = () => {
+    if (!toastDetail) return
+    navigator.clipboard?.writeText(toastDetail).then(
+      () => showToast('Détails copiés dans le presse-papier.'),
+      () => showToast('Copie impossible sur cet appareil.'),
+    )
   }
 
   const startEmergencyLook = () => {
@@ -807,7 +818,8 @@ function App() {
         } catch (error) {
           console.error('Détourage local indisponible, repli sur la compression simple :', error)
           preparedPhoto = await compressPhoto(normalizedFile)
-          showToast('Détourage indisponible sur cet appareil : photo ajoutée sans détourage.')
+          const detail = error instanceof Error ? error.message : String(error)
+          showToast('Détourage indisponible sur cet appareil : photo ajoutée sans détourage.', detail)
         }
       }
 
@@ -2077,6 +2089,11 @@ function App() {
             transition={TRANSITIONS.spring}
           >
             <Check size={17} /> {toast}
+            {toastDetail && (
+              <button type="button" className="toast-detail-action" onClick={copyToastDetail}>
+                Copier les détails
+              </button>
+            )}
           </motion.div>
         )}
       </AnimatePresence>
