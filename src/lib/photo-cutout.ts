@@ -66,6 +66,65 @@ export function softenCutoutEdges(pixels: Uint8ClampedArray): void {
   }
 }
 
+const DEFAULT_MIN_RELATIVE_AREA = 0.2
+
+export function removeDetachedFragments(
+  pixels: Uint8ClampedArray,
+  width: number,
+  height: number,
+  minRelativeArea = DEFAULT_MIN_RELATIVE_AREA,
+): void {
+  const labels = new Int32Array(width * height).fill(-1)
+  const areas: number[] = []
+  const queue = new Int32Array(width * height)
+
+  for (let start = 0; start < width * height; start++) {
+    if (labels[start] !== -1 || pixels[start * 4 + 3] <= BOUNDS_ALPHA_THRESHOLD) continue
+
+    const label = areas.length
+    let queueEnd = 0
+    let queueStart = 0
+    queue[queueEnd++] = start
+    labels[start] = label
+    let area = 0
+
+    while (queueStart < queueEnd) {
+      const index = queue[queueStart++]
+      area++
+      const x = index % width
+      const y = (index - x) / width
+
+      const neighbors = [
+        x > 0 ? index - 1 : -1,
+        x < width - 1 ? index + 1 : -1,
+        y > 0 ? index - width : -1,
+        y < height - 1 ? index + width : -1,
+      ]
+      for (const neighbor of neighbors) {
+        if (neighbor === -1 || labels[neighbor] !== -1) continue
+        if (pixels[neighbor * 4 + 3] <= BOUNDS_ALPHA_THRESHOLD) continue
+        labels[neighbor] = label
+        queue[queueEnd++] = neighbor
+      }
+    }
+
+    areas.push(area)
+  }
+
+  if (areas.length <= 1) return
+
+  const largestArea = Math.max(...areas)
+  const minArea = largestArea * minRelativeArea
+
+  for (let index = 0; index < width * height; index++) {
+    const label = labels[index]
+    if (label === -1) continue
+    if (areas[label] < minArea) {
+      pixels[index * 4 + 3] = 0
+    }
+  }
+}
+
 const OUTPUT_WIDTH = 900
 const OUTPUT_HEIGHT = 1125
 const MAX_FILL_RATIO = 0.82
