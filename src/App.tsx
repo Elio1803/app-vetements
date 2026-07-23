@@ -816,7 +816,6 @@ function App() {
           preparedPhoto = await createRemoveBgProductPhoto(normalizedFile)
         } catch (error) {
           console.error('remove.bg indisponible, repli sur le détourage local :', error)
-          showToast('remove.bg indisponible : détourage gratuit utilisé.')
         }
       }
 
