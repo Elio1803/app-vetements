@@ -423,6 +423,7 @@ function App() {
   const [wearCandidate, setWearCandidate] = useState<OutfitSuggestion | null>(null)
   const [toast, setToast] = useState('')
   const [toastDetail, setToastDetail] = useState('')
+  const [toastDetailRevealed, setToastDetailRevealed] = useState(false)
   const toastTimer = useRef<number | null>(null)
   const [appEntering, setAppEntering] = useState(false)
   const isOnline = useOnlineStatus()
@@ -724,19 +725,26 @@ function App() {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
     setToast(message)
     setToastDetail(detail ?? '')
+    setToastDetailRevealed(false)
     toastTimer.current = window.setTimeout(() => {
       setToast('')
       setToastDetail('')
+      setToastDetailRevealed(false)
       toastTimer.current = null
     }, detail ? 8000 : 3200)
   }
 
-  const copyToastDetail = () => {
+  const revealToastDetail = () => {
     if (!toastDetail) return
-    navigator.clipboard?.writeText(toastDetail).then(
-      () => showToast('Détails copiés dans le presse-papier.'),
-      () => showToast('Copie impossible sur cet appareil.'),
-    )
+    navigator.clipboard?.writeText(toastDetail).catch(() => {})
+    setToastDetailRevealed(true)
+    if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
+    toastTimer.current = window.setTimeout(() => {
+      setToast('')
+      setToastDetail('')
+      setToastDetailRevealed(false)
+      toastTimer.current = null
+    }, 30000)
   }
 
   const startEmergencyLook = () => {
@@ -2089,11 +2097,12 @@ function App() {
             transition={TRANSITIONS.spring}
           >
             <Check size={17} /> {toast}
-            {toastDetail && (
-              <button type="button" className="toast-detail-action" onClick={copyToastDetail}>
-                Copier les détails
+            {toastDetail && !toastDetailRevealed && (
+              <button type="button" className="toast-detail-action" onClick={revealToastDetail}>
+                Afficher les détails
               </button>
             )}
+            {toastDetailRevealed && <p className="toast-detail-text">{toastDetail}</p>}
           </motion.div>
         )}
       </AnimatePresence>
