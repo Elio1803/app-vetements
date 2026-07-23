@@ -807,8 +807,7 @@ function App() {
         } catch (error) {
           console.error('Détourage local indisponible, repli sur la compression simple :', error)
           preparedPhoto = await compressPhoto(normalizedFile)
-          const detail = error instanceof Error ? error.message : String(error)
-          showToast(`[diagnostic] Détourage local en échec : ${detail}`)
+          showToast('Détourage indisponible sur cet appareil : photo ajoutée sans détourage.')
         }
       }
 
