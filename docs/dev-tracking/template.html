@@ -1,4 +1,4 @@
-<title>Suivi du développement — Le Dressing</title>
+<title>AI Project Manager — Le Dressing</title>
 <style>
   :root {
     --bg: #f7f5f2; --surface: #ffffff; --border: #e2ddd6;
@@ -30,17 +30,27 @@
     background: var(--bg); color: var(--text);
     padding: 24px; max-width: 1100px; margin: 0 auto;
   }
-  header.db-header { margin-bottom: 24px; }
+  header.db-header { margin-bottom: 20px; }
   header.db-header h1 { font-size: 1.5rem; margin: 0 0 4px; }
   header.db-header p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
-  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
-  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
-  .tile .value { font-size: 1.6rem; font-weight: 700; }
-  .tile .label { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
-  .progress-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 24px; }
-  .progress-bar { width: 100%; height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+  .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px; }
+  @media (max-width: 700px) { .grid-2 { grid-template-columns: 1fr; } }
+  .box { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 16px; }
+  .box h2 { margin: 0 0 10px; font-size: 1rem; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 10px; }
+  .tile { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; }
+  .tile .value { font-size: 1.4rem; font-weight: 700; }
+  .tile .label { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+  .progress-bar { width: 100%; height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; margin: 10px 0 4px; }
   .progress-fill { height: 100%; background: var(--accent); }
-  .tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .priority-box { border-left: 4px solid var(--accent); }
+  .priority-box .label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+  .priority-box .value { font-size: 1.05rem; font-weight: 600; margin: 4px 0 10px; }
+  .priority-box .why { font-size: 0.88rem; color: var(--text-muted); }
+  .problems-box { border-left: 4px solid var(--danger); }
+  .problem-row { display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .problem-row:last-child { border-bottom: none; }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
   .tab-btn { background: none; border: none; padding: 10px 14px; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; }
   .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
   .panel { display: none; }
@@ -59,6 +69,10 @@
   .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; color: #fff; }
   .card .meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
   .card .files { font-size: 0.75rem; color: var(--text-muted); font-family: monospace; margin-top: 4px; }
+  .board { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; }
+  @media (max-width: 900px) { .board { grid-template-columns: 1fr 1fr; } }
+  .board-col h3 { font-size: 0.85rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 8px; }
+  .board-col .cards { gap: 8px; }
   .timeline { border-left: 2px solid var(--border); padding-left: 16px; display: grid; gap: 16px; }
   .timeline-entry .th-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .timeline-entry .date { font-size: 0.75rem; color: var(--text-muted); }
@@ -68,13 +82,37 @@
 <script>
   const DATA = /*__TRACKING_DATA__*/;
 
-  const STATUS_META = {
-    termine: { label: 'Terminé', color: 'var(--success)' },
-    en_cours: { label: 'En cours', color: 'var(--info)' },
-    a_faire: { label: 'À faire', color: 'var(--text-muted)' },
-    bloque: { label: 'Bloqué', color: 'var(--danger)' }
+  const TASK_STATUS_META = {
+    todo: { label: 'À faire', color: 'var(--text-muted)' },
+    in_progress: { label: 'En cours', color: 'var(--info)' },
+    completed: { label: 'Terminée', color: 'var(--success)' },
+    blocked: { label: 'Bloquée', color: 'var(--danger)' }
   };
-  const TYPE_META = {
+  const PRIORITY_META = {
+    critical: { label: 'Critique', color: 'var(--danger)' },
+    high: { label: 'Haute', color: 'var(--warn)' },
+    medium: { label: 'Moyenne', color: 'var(--info)' },
+    low: { label: 'Basse', color: 'var(--text-muted)' }
+  };
+  const BUG_STATUS_META = {
+    open: { label: 'Ouvert', color: 'var(--danger)' },
+    investigating: { label: 'En investigation', color: 'var(--warn)' },
+    fixed: { label: 'Corrigé', color: 'var(--success)' },
+    ignored: { label: 'Ignoré', color: 'var(--text-muted)' }
+  };
+  const SEVERITY_META = {
+    critical: { label: 'Critique', color: 'var(--danger)' },
+    high: { label: 'Haute', color: 'var(--warn)' },
+    medium: { label: 'Moyenne', color: 'var(--info)' },
+    low: { label: 'Basse', color: 'var(--text-muted)' }
+  };
+  const FEATURE_STATUS_META = {
+    planned: { label: 'Prévue', color: 'var(--text-muted)' },
+    in_progress: { label: 'En cours', color: 'var(--info)' },
+    completed: { label: 'Terminée', color: 'var(--success)' },
+    deprecated: { label: 'Abandonnée', color: 'var(--danger)' }
+  };
+  const CHANGE_TYPE_META = {
     nouvelle_fonctionnalite: { label: 'Nouvelle fonctionnalité', color: 'var(--success)' },
     amelioration: { label: 'Amélioration', color: 'var(--info)' },
     correction_bug: { label: 'Correction de bug', color: 'var(--danger)' },
@@ -82,74 +120,127 @@
     modification_visuelle: { label: 'Modification visuelle', color: 'var(--accent)' },
     modification_technique: { label: 'Modification technique', color: 'var(--text-muted)' }
   };
+  const SEVERITY_RANK = { critical: 0, high: 1, medium: 2, low: 3 };
 
-  const state = { tab: 'features', search: '', statusFilter: 'all' };
-
-  function statCounts() {
-    const counts = { termine: 0, en_cours: 0, a_faire: 0, bloque: 0 };
-    DATA.features.forEach(f => { counts[f.status] = (counts[f.status] || 0) + 1; });
-    return counts;
-  }
-
-  function renderTiles() {
-    const c = statCounts();
-    const total = DATA.features.length;
-    const tiles = [
-      { value: total, label: 'Fonctionnalités' },
-      { value: c.termine, label: 'Terminées' },
-      { value: c.en_cours, label: 'En cours' },
-      { value: c.a_faire, label: 'À faire' },
-      { value: c.bloque, label: 'Bloquées' },
-      { value: DATA.bugs.length, label: 'Bugs corrigés' },
-      { value: DATA.meta.totalModifications, label: 'Modifications' }
-    ];
-    return `<div class="tiles">${tiles.map(t => `
-      <div class="tile"><div class="value">${t.value}</div><div class="label">${t.label}</div></div>
-    `).join('')}</div>`;
-  }
-
-  function renderProgress() {
-    const c = statCounts();
-    const total = DATA.features.length || 1;
-    const pct = Math.round((c.termine / total) * 100);
-    return `<div class="progress-wrap">
-      <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
-        <span>Progression globale</span><span>${pct}%</span>
-      </div>
-      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
-    </div>`;
-  }
+  const state = { tab: 'tasks', search: '', taskFilter: 'all', bugFilter: 'all', featureFilter: 'all' };
 
   function badge(meta) {
     return `<span class="badge" style="background:${meta.color}">${meta.label}</span>`;
   }
 
-  function renderFeatureCard(f) {
-    const meta = STATUS_META[f.status] || STATUS_META.a_faire;
-    return `<div class="card">
-      <div class="th-head" style="display:flex; justify-content:space-between; align-items:center;">
-        <h3>${f.name}</h3>${badge(meta)}
+  function taskCounts() {
+    const counts = { todo: 0, in_progress: 0, completed: 0, blocked: 0 };
+    DATA.tasks.forEach(t => { counts[t.status] = (counts[t.status] || 0) + 1; });
+    return counts;
+  }
+
+  function renderProgressBox() {
+    const c = taskCounts();
+    return `<div class="box">
+      <h2>Progression</h2>
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+        <span>Progression globale</span><span>${DATA.projectState.progress}%</span>
       </div>
-      <p class="desc">${f.description}</p>
-      <div class="meta">Créé le ${f.createdAt} · Mis à jour le ${f.updatedAt}${f.notes ? ' · ' + f.notes : ''}</div>
-      <div class="files">${f.files.join(', ')}</div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${DATA.projectState.progress}%"></div></div>
+      <div class="tiles" style="margin-top:12px;">
+        <div class="tile"><div class="value">${c.completed}</div><div class="label">Tâches terminées</div></div>
+        <div class="tile"><div class="value">${c.in_progress}</div><div class="label">En cours</div></div>
+        <div class="tile"><div class="value">${c.blocked}</div><div class="label">Bloquées</div></div>
+        <div class="tile"><div class="value">${c.todo}</div><div class="label">À faire</div></div>
+      </div>
     </div>`;
+  }
+
+  function renderPriorityBox() {
+    const ps = DATA.projectState;
+    return `<div class="box priority-box">
+      <h2>🎯 Priorité du jour</h2>
+      <div class="label">Priorité</div>
+      <div class="value">${ps.currentPriority}</div>
+      <div class="label">Pourquoi ?</div>
+      <div class="why">${ps.priorityReason}</div>
+      <div class="label" style="margin-top:12px;">Prochaine action</div>
+      <div class="why">${ps.nextAction}</div>
+    </div>`;
+  }
+
+  function renderProblemsBox() {
+    const open = DATA.bugs
+      .filter(b => b.status === 'open' || b.status === 'investigating')
+      .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
+    const rows = open.length
+      ? open.map(b => `<div class="problem-row">
+          <div><strong>${b.title}</strong><div style="font-size:0.78rem; color:var(--text-muted);">${b.description}</div></div>
+          ${badge(SEVERITY_META[b.severity])}
+        </div>`).join('')
+      : `<div class="empty">Aucun problème ouvert.</div>`;
+    return `<div class="box problems-box"><h2>Problèmes actuels</h2>${rows}</div>`;
+  }
+
+  function renderTasks() {
+    const q = state.search.trim().toLowerCase();
+    const matches = t => !q || t.title.toLowerCase().includes(q) || t.description.toLowerCase().includes(q);
+    const columns = ['todo', 'in_progress', 'completed', 'blocked'];
+    const board = columns.map(status => {
+      const items = DATA.tasks.filter(t => t.status === status && matches(t));
+      const cards = items.length
+        ? `<div class="cards">${items.map(t => `<div class="card">
+            <h3>${t.title}</h3>
+            <p class="desc">${t.description}</p>
+            ${badge(PRIORITY_META[t.priority])}
+            <div class="meta">${t.category} · créée le ${t.createdAt}</div>
+          </div>`).join('')}</div>`
+        : `<div class="empty">Rien ici.</div>`;
+      return `<div class="board-col"><h3>${TASK_STATUS_META[status].label} (${items.length})</h3>${cards}</div>`;
+    }).join('');
+    return `<div class="controls">
+      <input type="search" id="task-search" placeholder="Rechercher une tâche..." value="${state.search}">
+    </div><div class="board">${board}</div>`;
+  }
+
+  function renderBugs() {
+    const filtered = DATA.bugs
+      .filter(b => state.bugFilter === 'all' || b.status === state.bugFilter)
+      .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
+    const statusBtns = ['all', 'open', 'investigating', 'fixed', 'ignored'].map(s => {
+      const label = s === 'all' ? 'Tous' : BUG_STATUS_META[s].label;
+      const active = state.bugFilter === s ? 'active' : '';
+      return `<button class="status-btn ${active}" data-bugstatus="${s}">${label}</button>`;
+    }).join('');
+    const cards = filtered.length
+      ? `<div class="cards">${filtered.map(b => `<div class="card">
+          <div class="th-head" style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>${b.title}</h3>${badge(SEVERITY_META[b.severity])}
+          </div>
+          <p class="desc">${b.description}</p>
+          ${badge(BUG_STATUS_META[b.status])}
+          <div class="meta">Signalé le ${b.createdAt}${b.solution ? ' · ' + b.solution : ''}</div>
+        </div>`).join('')}</div>`
+      : `<div class="empty">Aucun bug ne correspond aux filtres.</div>`;
+    return `<div class="controls">${statusBtns}</div>${cards}`;
   }
 
   function renderFeatures() {
     const q = state.search.trim().toLowerCase();
     const filtered = DATA.features.filter(f => {
-      const matchesStatus = state.statusFilter === 'all' || f.status === state.statusFilter;
+      const matchesStatus = state.featureFilter === 'all' || f.status === state.featureFilter;
       const matchesSearch = !q || f.name.toLowerCase().includes(q) || f.description.toLowerCase().includes(q);
       return matchesStatus && matchesSearch;
     });
-    const statusBtns = ['all', 'termine', 'en_cours', 'a_faire', 'bloque'].map(s => {
-      const label = s === 'all' ? 'Tous' : STATUS_META[s].label;
-      const active = state.statusFilter === s ? 'active' : '';
-      return `<button class="status-btn ${active}" data-status="${s}">${label}</button>`;
+    const statusBtns = ['all', 'planned', 'in_progress', 'completed', 'deprecated'].map(s => {
+      const label = s === 'all' ? 'Tous' : FEATURE_STATUS_META[s].label;
+      const active = state.featureFilter === s ? 'active' : '';
+      return `<button class="status-btn ${active}" data-featurestatus="${s}">${label}</button>`;
     }).join('');
     const cards = filtered.length
-      ? `<div class="cards">${filtered.map(renderFeatureCard).join('')}</div>`
+      ? `<div class="cards">${filtered.map(f => `<div class="card">
+          <div class="th-head" style="display:flex; justify-content:space-between; align-items:center;">
+            <h3>${f.name}</h3>${badge(FEATURE_STATUS_META[f.status])}
+          </div>
+          <p class="desc">${f.description}</p>
+          <div class="meta">${f.progress}% · Créée le ${f.createdAt} · Mise à jour le ${f.updatedAt}</div>
+          <div class="files">${f.files.join(', ')}</div>
+        </div>`).join('')}</div>`
       : `<div class="empty">Aucune fonctionnalité ne correspond aux filtres.</div>`;
     return `<div class="controls">
       <input type="search" id="feature-search" placeholder="Rechercher une fonctionnalité..." value="${state.search}">
@@ -157,17 +248,17 @@
     </div>${cards}`;
   }
 
-  function renderHistory() {
-    const entries = [...DATA.history].sort((a, b) => b.date.localeCompare(a.date));
-    if (!entries.length) return `<div class="empty">Aucun historique pour le moment.</div>`;
+  function renderChangelog() {
+    const entries = [...DATA.changelog].sort((a, b) => b.date.localeCompare(a.date));
+    if (!entries.length) return `<div class="empty">Aucune entrée pour le moment.</div>`;
     return `<div class="timeline">${entries.map(h => {
-      const meta = TYPE_META[h.type] || TYPE_META.modification_technique;
+      const meta = CHANGE_TYPE_META[h.type] || CHANGE_TYPE_META.modification_technique;
       return `<div class="timeline-entry">
         <div class="th-head">
           <strong>${h.title}</strong>${badge(meta)}<span class="date">${h.date}</span>
         </div>
         <p class="desc">${h.description}</p>
-        <div class="files">${h.files.join(', ')}</div>
+        <div class="files">${h.filesModified.join(', ')}</div>
       </div>`;
     }).join('')}</div>`;
   }
@@ -176,29 +267,42 @@
     const root = document.getElementById('dashboard');
     root.innerHTML = `
       <header class="db-header">
-        <h1>Suivi du développement — Le Dressing</h1>
-        <p>Dernière mise à jour : ${DATA.meta.lastUpdated}</p>
+        <h1>AI Project Manager — ${DATA.projectState.projectName}</h1>
+        <p>Phase : ${DATA.projectState.currentPhase} · Dernière mise à jour : ${DATA.projectState.lastUpdated} · Pour relancer une analyse, demande à Claude Code.</p>
       </header>
-      ${renderTiles()}
-      ${renderProgress()}
-      <div class="tabs">
+      <div class="grid-2">${renderProgressBox()}${renderPriorityBox()}</div>
+      ${renderProblemsBox()}
+      <div class="tabs" style="margin-top:20px;">
+        <button class="tab-btn ${state.tab === 'tasks' ? 'active' : ''}" data-tab="tasks">Tâches</button>
+        <button class="tab-btn ${state.tab === 'bugs' ? 'active' : ''}" data-tab="bugs">Bugs</button>
         <button class="tab-btn ${state.tab === 'features' ? 'active' : ''}" data-tab="features">Fonctionnalités</button>
-        <button class="tab-btn ${state.tab === 'history' ? 'active' : ''}" data-tab="history">Historique</button>
+        <button class="tab-btn ${state.tab === 'changelog' ? 'active' : ''}" data-tab="changelog">Activité récente</button>
       </div>
+      <div class="panel ${state.tab === 'tasks' ? 'active' : ''}" id="panel-tasks">${renderTasks()}</div>
+      <div class="panel ${state.tab === 'bugs' ? 'active' : ''}" id="panel-bugs">${renderBugs()}</div>
       <div class="panel ${state.tab === 'features' ? 'active' : ''}" id="panel-features">${renderFeatures()}</div>
-      <div class="panel ${state.tab === 'history' ? 'active' : ''}" id="panel-history">${renderHistory()}</div>
+      <div class="panel ${state.tab === 'changelog' ? 'active' : ''}" id="panel-changelog">${renderChangelog()}</div>
     `;
     root.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => { state.tab = btn.dataset.tab; render(); });
+      btn.addEventListener('click', () => { state.tab = btn.dataset.tab; state.search = ''; render(); });
     });
-    const searchInput = document.getElementById('feature-search');
-    if (searchInput) {
-      searchInput.addEventListener('input', (e) => { state.search = e.target.value; render(); });
-      searchInput.focus();
-      searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+    const taskSearch = document.getElementById('task-search');
+    if (taskSearch) {
+      taskSearch.addEventListener('input', (e) => { state.search = e.target.value; render(); });
+      taskSearch.focus();
+      taskSearch.setSelectionRange(taskSearch.value.length, taskSearch.value.length);
     }
-    root.querySelectorAll('.status-btn').forEach(btn => {
-      btn.addEventListener('click', () => { state.statusFilter = btn.dataset.status; render(); });
+    const featureSearch = document.getElementById('feature-search');
+    if (featureSearch) {
+      featureSearch.addEventListener('input', (e) => { state.search = e.target.value; render(); });
+      featureSearch.focus();
+      featureSearch.setSelectionRange(featureSearch.value.length, featureSearch.value.length);
+    }
+    root.querySelectorAll('[data-bugstatus]').forEach(btn => {
+      btn.addEventListener('click', () => { state.bugFilter = btn.dataset.bugstatus; render(); });
+    });
+    root.querySelectorAll('[data-featurestatus]').forEach(btn => {
+      btn.addEventListener('click', () => { state.featureFilter = btn.dataset.featurestatus; render(); });
     });
   }
 
