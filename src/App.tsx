@@ -442,6 +442,7 @@ function App() {
   const syncingLocalItems = useRef(new Set<string>())
   const syncLocalItemsRunning = useRef(false)
   const cloudRefreshRunning = useRef(false)
+  const pendingItemMutations = useRef(0)
 
   useEffect(() => () => {
     if (toastTimer.current !== null) window.clearTimeout(toastTimer.current)
@@ -615,7 +616,7 @@ function App() {
     let cancelled = false
 
     const refreshCloudWardrobe = async () => {
-      if (cloudRefreshRunning.current || document.visibilityState !== 'visible' || !navigator.onLine || syncingLocalItems.current.size > 0) return
+      if (cloudRefreshRunning.current || document.visibilityState !== 'visible' || !navigator.onLine || syncingLocalItems.current.size > 0 || pendingItemMutations.current > 0) return
       cloudRefreshRunning.current = true
       setCloudRefreshing(true)
       try {
@@ -977,6 +978,7 @@ function App() {
       name: editName.trim() || `${CATEGORY_LABELS_SINGULAR[editCategory]} sans nom`,
       category: editCategory,
     }
+    pendingItemMutations.current += 1
     try {
       if (supabase && currentUserId) await wardrobeApi.updateItem(selectedItem.id, patch)
       else wardrobeStore.updateItem(selectedItem.id, patch)
@@ -984,12 +986,18 @@ function App() {
       showToast('Modifications enregistrées.')
     } catch {
       showToast('Impossible d’enregistrer ces modifications pour le moment.')
+    } finally {
+      pendingItemMutations.current -= 1
     }
   }
 
   const deleteSelected = async () => {
     if (!selectedItem) return
+    // window.confirm blurs and refocuses the window, which triggers the
+    // 'focus' listener below and can race a cloud wardrobe refresh against
+    // this deletion — the guard must therefore start after confirm resolves.
     if (!window.confirm('Supprimer cette pièce ? Cette action est irréversible.')) return
+    pendingItemMutations.current += 1
     try {
       const storagePath = storagePaths.current.get(selectedItem.id)
       if (supabase && currentUserId) {
@@ -1006,6 +1014,8 @@ function App() {
       showToast('Pièce supprimée du dressing.')
     } catch {
       showToast('Impossible de supprimer cette pièce pour le moment.')
+    } finally {
+      pendingItemMutations.current -= 1
     }
   }
 
