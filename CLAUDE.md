@@ -37,3 +37,58 @@ Pas de dossier `/src/pages` : l'app est une single-page (tout passe par `App.tsx
 - Ne pas casser les animations existantes lors de refactors UI
 - Privilégier des commits atomiques et clairs
 - Les Edge Functions Supabase ne se déploient PAS automatiquement au push GitHub (le workflow CI ne publie que le frontend sur GitHub Pages) — déploiement manuel requis : `supabase functions deploy <nom-fonction>`
+
+## AI Project Manager
+
+Le projet dispose d'un système de suivi structuré dans `docs/dev-tracking/`
+(`tracking.json` = source de vérité : `projectState`, `tasks`, `bugs`,
+`features`, `changelog`). Voir `docs/dev-tracking/README.md` pour le schéma
+complet et `docs/superpowers/specs/2026-07-24-ai-project-manager-design.md`
+pour le contexte de conception.
+
+### Ordre de priorisation (toujours dans cet ordre)
+
+1. Bugs critiques.
+2. Problèmes de sécurité.
+3. Problèmes empêchant l'usage principal de l'application.
+4. Bugs importants.
+5. Fonctionnalités nécessaires au fonctionnement du produit.
+6. Améliorations de l'expérience utilisateur.
+7. Nouvelles fonctionnalités.
+
+Ne jamais proposer de nouvelle fonctionnalité tant que des problèmes plus
+prioritaires existent dans `tracking.json`.
+
+### Quand l'utilisateur demande "analyse mon projet"
+
+1. Lire `docs/dev-tracking/tracking.json` en entier.
+2. Lire le `git log` récent (depuis la dernière `lastUpdated` de
+   `projectState`) et les specs/plans non implémentés dans
+   `docs/superpowers/`.
+3. Identifier les problèmes (bugs `open`/`investigating`) et les tâches
+   `blocked`.
+4. Appliquer l'ordre de priorisation ci-dessus pour déterminer la priorité
+   principale.
+5. Répondre avec : état du projet, résumé, changements récents, problèmes
+   détectés, priorité principale + pourquoi, prochaine action,
+   recommandations.
+6. Mettre à jour `projectState` (`currentPriority`, `priorityReason`,
+   `nextAction`, `progress`, `lastUpdated`) dans `tracking.json` en
+   conséquence, régénérer `dashboard.html` et republier l'Artifact.
+
+### Quand l'utilisateur demande "fais-moi le briefing de mon application"
+
+Même lecture que ci-dessus, réponse formatée en briefing : état du projet
+(progression, phase, objectif), ce qui a été fait (derniers `changelog`),
+problèmes détectés, priorité du jour + pourquoi, prochaine action, vision
+globale.
+
+### Historique automatique
+
+Après toute modification à impact réel (nouvelle fonctionnalité, bug
+corrigé, changement de schéma DB, refonte notable) — pas les détails
+mineurs — ajouter une entrée dans `changelog`, mettre à jour la
+tâche/bug/feature concernée, ajuster `projectState.progress` et
+`lastUpdated`, régénérer `dashboard.html`
+(`node docs/dev-tracking/build.mjs`) et republier l'Artifact sur le même
+lien.
