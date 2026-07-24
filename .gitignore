@@ -6,3 +6,5 @@ dist/
 *.zip
 .DS_Store
 coverage/
+.claude/settings.local.json
+.claude/worktrees/

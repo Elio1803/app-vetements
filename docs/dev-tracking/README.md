@@ -8,6 +8,7 @@ Système de suivi de développement du projet. Source de vérité sur l'état du
 - `template.html` — gabarit HTML/CSS/JS du dashboard, avec le placeholder `/*__TRACKING_DATA__*/`.
 - `build.mjs` — script Node qui valide `tracking.json` puis l'injecte dans `template.html` pour produire `dashboard.html`.
 - `dashboard.html` — fragment HTML généré, publié tel quel comme Artifact Claude (conservé dans le repo pour diff/historique git).
+- `session-recap.mjs` — script exécuté par le hook `SessionStart` (`.claude/settings.json`) à l'ouverture de chaque session Claude Code sur ce repo ; affiche l'état du projet lu depuis `tracking.json`.
 
 ## Régénérer le dashboard
 
@@ -59,3 +60,8 @@ Ne pas enregistrer chaque petite modification inutile dans `changelog` — uniqu
 ## Règles d'analyse et de briefing
 
 Voir la section "AI Project Manager" de `CLAUDE.md` (racine du projet) pour l'ordre de priorisation et le format de réponse attendu quand l'utilisateur demande "analyse mon projet" ou "fais-moi le briefing de mon application".
+
+## Automatisation (Phase B)
+
+- Le hook `SessionStart` régénère un recap à chaque ouverture de session (voir la section "Automatisation" de `CLAUDE.md`).
+- Une routine cloud planifiée (3x/jour) avance sur le backlog par ordre de priorité, sur une branche `agent/<slug>` à relire et merger manuellement — jamais de commit direct sur `main`. Gérée via `claude.ai/code/routines`.

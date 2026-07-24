@@ -793,6 +793,26 @@
       ],
       "createdAt": "2026-07-21",
       "updatedAt": "2026-07-23"
+    },
+    {
+      "id": "ai-project-manager",
+      "name": "AI Project Manager",
+      "description": "Système de suivi de développement (tracking.json, dashboard Artifact, règles CLAUDE.md) avec recap automatique à l'ouverture de session et agent planifié 3x/jour qui avance sur le backlog sur une branche à valider.",
+      "status": "completed",
+      "priority": "medium",
+      "progress": 100,
+      "relatedTasks": [],
+      "files": [
+        "docs/dev-tracking/tracking.json",
+        "docs/dev-tracking/template.html",
+        "docs/dev-tracking/build.mjs",
+        "docs/dev-tracking/README.md",
+        "docs/dev-tracking/session-recap.mjs",
+        ".claude/settings.json",
+        "CLAUDE.md"
+      ],
+      "createdAt": "2026-07-24",
+      "updatedAt": "2026-07-24"
     }
   ],
   "changelog": [
@@ -913,9 +933,40 @@
         "docs/dev-tracking/README.md",
         "CLAUDE.md"
       ],
-      "feature": null,
+      "feature": "ai-project-manager",
       "result": "completed",
       "remainingIssues": []
+    },
+    {
+      "id": "chg-009",
+      "date": "2026-07-24",
+      "title": "Renforcement de la validation de tracking.json et de l'échappement HTML du dashboard",
+      "type": "modification_technique",
+      "description": "Ajout de vérifications de schéma supplémentaires dans build.mjs (champs projectState requis, files/filesModified doivent être des tableaux) et d'un échappement HTML systématique des données injectées dans le dashboard, suite à la revue finale de la Phase A.",
+      "filesModified": [
+        "docs/dev-tracking/build.mjs",
+        "docs/dev-tracking/template.html",
+        "docs/dev-tracking/tracking.json"
+      ],
+      "feature": "ai-project-manager",
+      "result": "completed",
+      "remainingIssues": []
+    },
+    {
+      "id": "chg-010",
+      "date": "2026-07-24",
+      "title": "Automatisation Phase B : recap de session automatique et agent planifié 3x/jour",
+      "type": "nouvelle_fonctionnalite",
+      "description": "Ajout d'un hook SessionStart (docs/dev-tracking/session-recap.mjs) qui affiche un recap de l'état du projet à l'ouverture de chaque session Claude Code sur ce repo, et création d'une routine cloud planifiée (8h/13h/20h heure de Paris) qui avance de façon autonome sur le backlog par priorité, sur une branche dédiée agent/* jamais mergée automatiquement, avec notification push à chaque passage.",
+      "filesModified": [
+        "docs/dev-tracking/session-recap.mjs",
+        ".claude/settings.json"
+      ],
+      "feature": "ai-project-manager",
+      "result": "completed",
+      "remainingIssues": [
+        "Fiabilité de la notification push depuis un agent cloud planifié non encore vérifiée en conditions réelles — à confirmer au premier passage."
+      ]
     }
   ]
 };

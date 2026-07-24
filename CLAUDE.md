@@ -92,3 +92,20 @@ tâche/bug/feature concernée, ajuster `projectState.progress` et
 `lastUpdated`, régénérer `dashboard.html`
 (`node docs/dev-tracking/build.mjs`) et republier l'Artifact sur le même
 lien.
+
+### Automatisation (Phase B)
+
+- **Recap à l'ouverture de session** : un hook `SessionStart`
+  (`.claude/settings.json`, script `docs/dev-tracking/session-recap.mjs`)
+  affiche automatiquement l'état du projet (priorité du jour, prochaine
+  action, bugs ouverts, branches `agent/*` en attente de relecture) au
+  début de chaque session Claude Code sur ce repo.
+- **Agent planifié** : une routine cloud tourne 3x/jour (8h/13h/20h heure
+  de Paris) et avance de façon autonome sur l'item le plus prioritaire du
+  backlog, sur une branche dédiée `agent/<slug>` — jamais de commit ou de
+  merge direct sur `main`. Une notification push résume chaque passage.
+  Garde-fou anti-accumulation : si une branche `agent/*` non mergée existe
+  déjà, l'agent ne démarre pas de nouveau chantier tant qu'elle n'a pas été
+  relue. Pour merger le travail de l'agent : relire la branche comme
+  n'importe quelle autre, puis `git merge agent/<slug>` dans une session
+  interactive.
