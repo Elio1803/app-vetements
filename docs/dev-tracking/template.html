@@ -1,0 +1,206 @@
+<title>Suivi du développement — Le Dressing</title>
+<style>
+  :root {
+    --bg: #f7f5f2; --surface: #ffffff; --border: #e2ddd6;
+    --text: #201c18; --text-muted: #6b625a; --accent: #b45309;
+    --success: #15803d; --info: #2563eb; --warn: #a16207; --danger: #b91c1c;
+    --radius: 10px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #15130f; --surface: #201c18; --border: #3a332b;
+      --text: #f3ede4; --text-muted: #a89d8f; --accent: #e0a458;
+      --success: #4ade80; --info: #60a5fa; --warn: #facc15; --danger: #f87171;
+    }
+  }
+  :root[data-theme="light"] {
+    --bg: #f7f5f2; --surface: #ffffff; --border: #e2ddd6;
+    --text: #201c18; --text-muted: #6b625a; --accent: #b45309;
+    --success: #15803d; --info: #2563eb; --warn: #a16207; --danger: #b91c1c;
+  }
+  :root[data-theme="dark"] {
+    --bg: #15130f; --surface: #201c18; --border: #3a332b;
+    --text: #f3ede4; --text-muted: #a89d8f; --accent: #e0a458;
+    --success: #4ade80; --info: #60a5fa; --warn: #facc15; --danger: #f87171;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; }
+  #dashboard {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg); color: var(--text);
+    padding: 24px; max-width: 1100px; margin: 0 auto;
+  }
+  header.db-header { margin-bottom: 24px; }
+  header.db-header h1 { font-size: 1.5rem; margin: 0 0 4px; }
+  header.db-header p { margin: 0; color: var(--text-muted); font-size: 0.9rem; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .tile { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .tile .value { font-size: 1.6rem; font-weight: 700; }
+  .tile .label { font-size: 0.78rem; color: var(--text-muted); margin-top: 2px; }
+  .progress-wrap { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; margin-bottom: 24px; }
+  .progress-bar { width: 100%; height: 10px; background: var(--border); border-radius: 999px; overflow: hidden; margin-top: 8px; }
+  .progress-fill { height: 100%; background: var(--accent); }
+  .tabs { display: flex; gap: 8px; margin-bottom: 16px; border-bottom: 1px solid var(--border); }
+  .tab-btn { background: none; border: none; padding: 10px 14px; font-size: 0.9rem; color: var(--text-muted); cursor: pointer; border-bottom: 2px solid transparent; }
+  .tab-btn.active { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
+  .panel { display: none; }
+  .panel.active { display: block; }
+  .controls { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; }
+  .controls input[type="search"] {
+    flex: 1; min-width: 160px; padding: 8px 10px; border-radius: var(--radius);
+    border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  }
+  .status-btn { padding: 6px 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-muted); font-size: 0.8rem; cursor: pointer; }
+  .status-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .cards { display: grid; gap: 12px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px; }
+  .card h3 { margin: 0 0 4px; font-size: 1rem; }
+  .card p.desc { margin: 0 0 8px; color: var(--text-muted); font-size: 0.88rem; }
+  .badge { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 0.72rem; font-weight: 600; color: #fff; }
+  .card .meta { font-size: 0.75rem; color: var(--text-muted); margin-top: 8px; }
+  .card .files { font-size: 0.75rem; color: var(--text-muted); font-family: monospace; margin-top: 4px; }
+  .timeline { border-left: 2px solid var(--border); padding-left: 16px; display: grid; gap: 16px; }
+  .timeline-entry .th-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .timeline-entry .date { font-size: 0.75rem; color: var(--text-muted); }
+  .empty { color: var(--text-muted); font-size: 0.85rem; padding: 20px; text-align: center; }
+</style>
+<div id="dashboard"></div>
+<script>
+  const DATA = /*__TRACKING_DATA__*/;
+
+  const STATUS_META = {
+    termine: { label: 'Terminé', color: 'var(--success)' },
+    en_cours: { label: 'En cours', color: 'var(--info)' },
+    a_faire: { label: 'À faire', color: 'var(--text-muted)' },
+    bloque: { label: 'Bloqué', color: 'var(--danger)' }
+  };
+  const TYPE_META = {
+    nouvelle_fonctionnalite: { label: 'Nouvelle fonctionnalité', color: 'var(--success)' },
+    amelioration: { label: 'Amélioration', color: 'var(--info)' },
+    correction_bug: { label: 'Correction de bug', color: 'var(--danger)' },
+    refactorisation: { label: 'Refactorisation', color: 'var(--warn)' },
+    modification_visuelle: { label: 'Modification visuelle', color: 'var(--accent)' },
+    modification_technique: { label: 'Modification technique', color: 'var(--text-muted)' }
+  };
+
+  const state = { tab: 'features', search: '', statusFilter: 'all' };
+
+  function statCounts() {
+    const counts = { termine: 0, en_cours: 0, a_faire: 0, bloque: 0 };
+    DATA.features.forEach(f => { counts[f.status] = (counts[f.status] || 0) + 1; });
+    return counts;
+  }
+
+  function renderTiles() {
+    const c = statCounts();
+    const total = DATA.features.length;
+    const tiles = [
+      { value: total, label: 'Fonctionnalités' },
+      { value: c.termine, label: 'Terminées' },
+      { value: c.en_cours, label: 'En cours' },
+      { value: c.a_faire, label: 'À faire' },
+      { value: c.bloque, label: 'Bloquées' },
+      { value: DATA.bugs.length, label: 'Bugs corrigés' },
+      { value: DATA.meta.totalModifications, label: 'Modifications' }
+    ];
+    return `<div class="tiles">${tiles.map(t => `
+      <div class="tile"><div class="value">${t.value}</div><div class="label">${t.label}</div></div>
+    `).join('')}</div>`;
+  }
+
+  function renderProgress() {
+    const c = statCounts();
+    const total = DATA.features.length || 1;
+    const pct = Math.round((c.termine / total) * 100);
+    return `<div class="progress-wrap">
+      <div style="display:flex; justify-content:space-between; font-size:0.85rem;">
+        <span>Progression globale</span><span>${pct}%</span>
+      </div>
+      <div class="progress-bar"><div class="progress-fill" style="width:${pct}%"></div></div>
+    </div>`;
+  }
+
+  function badge(meta) {
+    return `<span class="badge" style="background:${meta.color}">${meta.label}</span>`;
+  }
+
+  function renderFeatureCard(f) {
+    const meta = STATUS_META[f.status] || STATUS_META.a_faire;
+    return `<div class="card">
+      <div class="th-head" style="display:flex; justify-content:space-between; align-items:center;">
+        <h3>${f.name}</h3>${badge(meta)}
+      </div>
+      <p class="desc">${f.description}</p>
+      <div class="meta">Créé le ${f.createdAt} · Mis à jour le ${f.updatedAt}${f.notes ? ' · ' + f.notes : ''}</div>
+      <div class="files">${f.files.join(', ')}</div>
+    </div>`;
+  }
+
+  function renderFeatures() {
+    const q = state.search.trim().toLowerCase();
+    const filtered = DATA.features.filter(f => {
+      const matchesStatus = state.statusFilter === 'all' || f.status === state.statusFilter;
+      const matchesSearch = !q || f.name.toLowerCase().includes(q) || f.description.toLowerCase().includes(q);
+      return matchesStatus && matchesSearch;
+    });
+    const statusBtns = ['all', 'termine', 'en_cours', 'a_faire', 'bloque'].map(s => {
+      const label = s === 'all' ? 'Tous' : STATUS_META[s].label;
+      const active = state.statusFilter === s ? 'active' : '';
+      return `<button class="status-btn ${active}" data-status="${s}">${label}</button>`;
+    }).join('');
+    const cards = filtered.length
+      ? `<div class="cards">${filtered.map(renderFeatureCard).join('')}</div>`
+      : `<div class="empty">Aucune fonctionnalité ne correspond aux filtres.</div>`;
+    return `<div class="controls">
+      <input type="search" id="feature-search" placeholder="Rechercher une fonctionnalité..." value="${state.search}">
+      ${statusBtns}
+    </div>${cards}`;
+  }
+
+  function renderHistory() {
+    const entries = [...DATA.history].sort((a, b) => b.date.localeCompare(a.date));
+    if (!entries.length) return `<div class="empty">Aucun historique pour le moment.</div>`;
+    return `<div class="timeline">${entries.map(h => {
+      const meta = TYPE_META[h.type] || TYPE_META.modification_technique;
+      return `<div class="timeline-entry">
+        <div class="th-head">
+          <strong>${h.title}</strong>${badge(meta)}<span class="date">${h.date}</span>
+        </div>
+        <p class="desc">${h.description}</p>
+        <div class="files">${h.files.join(', ')}</div>
+      </div>`;
+    }).join('')}</div>`;
+  }
+
+  function render() {
+    const root = document.getElementById('dashboard');
+    root.innerHTML = `
+      <header class="db-header">
+        <h1>Suivi du développement — Le Dressing</h1>
+        <p>Dernière mise à jour : ${DATA.meta.lastUpdated}</p>
+      </header>
+      ${renderTiles()}
+      ${renderProgress()}
+      <div class="tabs">
+        <button class="tab-btn ${state.tab === 'features' ? 'active' : ''}" data-tab="features">Fonctionnalités</button>
+        <button class="tab-btn ${state.tab === 'history' ? 'active' : ''}" data-tab="history">Historique</button>
+      </div>
+      <div class="panel ${state.tab === 'features' ? 'active' : ''}" id="panel-features">${renderFeatures()}</div>
+      <div class="panel ${state.tab === 'history' ? 'active' : ''}" id="panel-history">${renderHistory()}</div>
+    `;
+    root.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', () => { state.tab = btn.dataset.tab; render(); });
+    });
+    const searchInput = document.getElementById('feature-search');
+    if (searchInput) {
+      searchInput.addEventListener('input', (e) => { state.search = e.target.value; render(); });
+      searchInput.focus();
+      searchInput.setSelectionRange(searchInput.value.length, searchInput.value.length);
+    }
+    root.querySelectorAll('.status-btn').forEach(btn => {
+      btn.addEventListener('click', () => { state.statusFilter = btn.dataset.status; render(); });
+    });
+  }
+
+  render();
+</script>
