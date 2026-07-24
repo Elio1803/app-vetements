@@ -82,6 +82,15 @@
 <script>
   const DATA = /*__TRACKING_DATA__*/;
 
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;')
+      .replace(/'/g, '&#39;');
+  }
+
   const TASK_STATUS_META = {
     todo: { label: 'À faire', color: 'var(--text-muted)' },
     in_progress: { label: 'En cours', color: 'var(--info)' },
@@ -156,11 +165,11 @@
     return `<div class="box priority-box">
       <h2>🎯 Priorité du jour</h2>
       <div class="label">Priorité</div>
-      <div class="value">${ps.currentPriority}</div>
+      <div class="value">${escapeHtml(ps.currentPriority)}</div>
       <div class="label">Pourquoi ?</div>
-      <div class="why">${ps.priorityReason}</div>
+      <div class="why">${escapeHtml(ps.priorityReason)}</div>
       <div class="label" style="margin-top:12px;">Prochaine action</div>
-      <div class="why">${ps.nextAction}</div>
+      <div class="why">${escapeHtml(ps.nextAction)}</div>
     </div>`;
   }
 
@@ -170,7 +179,7 @@
       .sort((a, b) => SEVERITY_RANK[a.severity] - SEVERITY_RANK[b.severity]);
     const rows = open.length
       ? open.map(b => `<div class="problem-row">
-          <div><strong>${b.title}</strong><div style="font-size:0.78rem; color:var(--text-muted);">${b.description}</div></div>
+          <div><strong>${escapeHtml(b.title)}</strong><div style="font-size:0.78rem; color:var(--text-muted);">${escapeHtml(b.description)}</div></div>
           ${badge(SEVERITY_META[b.severity])}
         </div>`).join('')
       : `<div class="empty">Aucun problème ouvert.</div>`;
@@ -185,16 +194,16 @@
       const items = DATA.tasks.filter(t => t.status === status && matches(t));
       const cards = items.length
         ? `<div class="cards">${items.map(t => `<div class="card">
-            <h3>${t.title}</h3>
-            <p class="desc">${t.description}</p>
+            <h3>${escapeHtml(t.title)}</h3>
+            <p class="desc">${escapeHtml(t.description)}</p>
             ${badge(PRIORITY_META[t.priority])}
-            <div class="meta">${t.category} · créée le ${t.createdAt}</div>
+            <div class="meta">${escapeHtml(t.category)} · créée le ${escapeHtml(t.createdAt)}</div>
           </div>`).join('')}</div>`
         : `<div class="empty">Rien ici.</div>`;
       return `<div class="board-col"><h3>${TASK_STATUS_META[status].label} (${items.length})</h3>${cards}</div>`;
     }).join('');
     return `<div class="controls">
-      <input type="search" id="task-search" placeholder="Rechercher une tâche..." value="${state.search}">
+      <input type="search" id="task-search" placeholder="Rechercher une tâche..." value="${escapeHtml(state.search)}">
     </div><div class="board">${board}</div>`;
   }
 
@@ -210,11 +219,11 @@
     const cards = filtered.length
       ? `<div class="cards">${filtered.map(b => `<div class="card">
           <div class="th-head" style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>${b.title}</h3>${badge(SEVERITY_META[b.severity])}
+            <h3>${escapeHtml(b.title)}</h3>${badge(SEVERITY_META[b.severity])}
           </div>
-          <p class="desc">${b.description}</p>
+          <p class="desc">${escapeHtml(b.description)}</p>
           ${badge(BUG_STATUS_META[b.status])}
-          <div class="meta">Signalé le ${b.createdAt}${b.solution ? ' · ' + b.solution : ''}</div>
+          <div class="meta">Signalé le ${escapeHtml(b.createdAt)}${b.solution ? ' · ' + escapeHtml(b.solution) : ''}</div>
         </div>`).join('')}</div>`
       : `<div class="empty">Aucun bug ne correspond aux filtres.</div>`;
     return `<div class="controls">${statusBtns}</div>${cards}`;
@@ -235,15 +244,15 @@
     const cards = filtered.length
       ? `<div class="cards">${filtered.map(f => `<div class="card">
           <div class="th-head" style="display:flex; justify-content:space-between; align-items:center;">
-            <h3>${f.name}</h3>${badge(FEATURE_STATUS_META[f.status])}
+            <h3>${escapeHtml(f.name)}</h3>${badge(FEATURE_STATUS_META[f.status])}
           </div>
-          <p class="desc">${f.description}</p>
-          <div class="meta">${f.progress}% · Créée le ${f.createdAt} · Mise à jour le ${f.updatedAt}</div>
-          <div class="files">${f.files.join(', ')}</div>
+          <p class="desc">${escapeHtml(f.description)}</p>
+          <div class="meta">${f.progress}% · Créée le ${escapeHtml(f.createdAt)} · Mise à jour le ${escapeHtml(f.updatedAt)}</div>
+          <div class="files">${escapeHtml(f.files.join(', '))}</div>
         </div>`).join('')}</div>`
       : `<div class="empty">Aucune fonctionnalité ne correspond aux filtres.</div>`;
     return `<div class="controls">
-      <input type="search" id="feature-search" placeholder="Rechercher une fonctionnalité..." value="${state.search}">
+      <input type="search" id="feature-search" placeholder="Rechercher une fonctionnalité..." value="${escapeHtml(state.search)}">
       ${statusBtns}
     </div>${cards}`;
   }
@@ -255,10 +264,10 @@
       const meta = CHANGE_TYPE_META[h.type] || CHANGE_TYPE_META.modification_technique;
       return `<div class="timeline-entry">
         <div class="th-head">
-          <strong>${h.title}</strong>${badge(meta)}<span class="date">${h.date}</span>
+          <strong>${escapeHtml(h.title)}</strong>${badge(meta)}<span class="date">${escapeHtml(h.date)}</span>
         </div>
-        <p class="desc">${h.description}</p>
-        <div class="files">${h.filesModified.join(', ')}</div>
+        <p class="desc">${escapeHtml(h.description)}</p>
+        <div class="files">${escapeHtml(h.filesModified.join(', '))}</div>
       </div>`;
     }).join('')}</div>`;
   }
@@ -267,8 +276,8 @@
     const root = document.getElementById('dashboard');
     root.innerHTML = `
       <header class="db-header">
-        <h1>AI Project Manager — ${DATA.projectState.projectName}</h1>
-        <p>Phase : ${DATA.projectState.currentPhase} · Dernière mise à jour : ${DATA.projectState.lastUpdated} · Pour relancer une analyse, demande à Claude Code.</p>
+        <h1>AI Project Manager — ${escapeHtml(DATA.projectState.projectName)}</h1>
+        <p>Phase : ${escapeHtml(DATA.projectState.currentPhase)} · Dernière mise à jour : ${escapeHtml(DATA.projectState.lastUpdated)} · Pour relancer une analyse, demande à Claude Code.</p>
       </header>
       <div class="grid-2">${renderProgressBox()}${renderPriorityBox()}</div>
       ${renderProblemsBox()}

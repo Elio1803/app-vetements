@@ -12,10 +12,17 @@ const TASK_STATUSES = ['todo', 'in_progress', 'completed', 'blocked'];
 const BUG_STATUSES = ['open', 'investigating', 'fixed', 'ignored'];
 const FEATURE_STATUSES = ['planned', 'in_progress', 'completed', 'deprecated'];
 const PRIORITIES = ['critical', 'high', 'medium', 'low'];
+const PROJECT_STATE_KEYS = [
+  'projectName', 'description', 'mainObjective', 'currentPhase', 'progress',
+  'lastUpdated', 'currentPriority', 'priorityReason', 'nextAction'
+];
 
 function validateTrackingData(data) {
   for (const key of ['projectState', 'tasks', 'bugs', 'features', 'changelog']) {
     if (!(key in data)) throw new Error(`tracking.json is missing top-level key "${key}"`);
+  }
+  for (const key of PROJECT_STATE_KEYS) {
+    if (!(key in data.projectState)) throw new Error(`tracking.json: projectState is missing key "${key}"`);
   }
   for (const key of ['tasks', 'bugs', 'features', 'changelog']) {
     const ids = data[key].map(x => x.id);
@@ -32,6 +39,10 @@ function validateTrackingData(data) {
   }
   for (const f of data.features) {
     if (!FEATURE_STATUSES.includes(f.status)) throw new Error(`feature ${f.id}: invalid status "${f.status}"`);
+    if (!Array.isArray(f.files)) throw new Error(`feature ${f.id}: "files" must be an array`);
+  }
+  for (const h of data.changelog) {
+    if (!Array.isArray(h.filesModified)) throw new Error(`changelog ${h.id}: "filesModified" must be an array`);
   }
 }
 
