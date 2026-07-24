@@ -34,8 +34,9 @@ The 2026-07-21 dashboard system was built on branch `dev-tracking-dashboard`, wh
 
 - [ ] **Step 1: Extract the four files from the unmerged branch**
 
+Run these from the repository root you were told to work from (the worktree, not the main checkout):
+
 ```bash
-cd "/Users/eliopainteaux/Desktop/Perso/Le Dressing Application/app-vetements"
 mkdir -p docs/dev-tracking
 git show dev-tracking-dashboard:docs/dev-tracking/tracking.json > docs/dev-tracking/tracking.json
 git show dev-tracking-dashboard:docs/dev-tracking/template.html > docs/dev-tracking/template.html
